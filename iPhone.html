@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阿嬤每日健康記錄</title>
+<style>
+  :root {
+    --bg: #fdf6ee;
+    --card: #fff9f2;
+    --border: #e8d5b7;
+    --accent: #c0855a;
+    --accent2: #8ab89a;
+    --accent3: #e07b6a;
+    --text: #3a2e22;
+    --sub: #7a6652;
+    --id-text: #2a5c3f;
+    --zh-bg: #fff3e6;
+    --id-bg: #e8f5ed;
+    --shadow: 0 2px 12px rgba(192,133,90,0.10);
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    font-family: 'Noto Sans TC', 'Noto Sans', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px;
+  }
+  header { text-align: center; padding: 20px 0 12px; margin-bottom: 16px; }
+  .header-emoji { font-size: 2.4rem; display: block; margin-bottom: 4px; }
+  .header-zh { font-size: 1.35rem; font-weight: 700; color: var(--accent); letter-spacing: 1px; }
+  .header-id { font-size: 0.95rem; color: var(--id-text); font-weight: 600; margin-top: 2px; }
+  .date-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; }
+  .date-row input[type=date] {
+    border: 2px solid var(--border); border-radius: 10px; padding: 8px 14px;
+    font-size: 1rem; background: white; color: var(--text); outline: none; font-family: inherit;
+  }
+  .date-row input[type=date]:focus { border-color: var(--accent); }
+  .card {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden;
+  }
+  .card-header { display: flex; align-items: stretch; padding: 10px 16px 8px; border-bottom: 1px solid var(--border); }
+  .label-zh {
+    background: var(--zh-bg); border-radius: 8px 0 0 8px; padding: 5px 12px;
+    font-size: 0.95rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; flex: 1;
+  }
+  .label-id {
+    background: var(--id-bg); border-radius: 0 8px 8px 0; padding: 5px 12px;
+    font-size: 0.85rem; font-weight: 600; color: var(--id-text); display: flex; align-items: center; flex: 1; font-style: italic;
+  }
+  .card-body { padding: 12px 16px 14px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    flex: 1; min-width: 70px; border: 2px solid var(--border); border-radius: 10px;
+    background: white; padding: 10px 6px; cursor: pointer; text-align: center;
+    transition: all 0.18s; outline: none; -webkit-tap-highlight-color: transparent;
+  }
+  .btn .zh { font-size: 0.95rem; font-weight: 700; color: var(--text); display: block; }
+  .btn .id { font-size: 0.75rem; color: var(--sub); display: block; margin-top: 2px; font-style: italic; }
+  .btn.selected { border-color: var(--accent); background: #fff0e2; box-shadow: 0 2px 8px rgba(192,133,90,0.18); }
+  .btn.selected .zh { color: var(--accent); }
+  .btn.selected-green { border-color: var(--accent2); background: #edf7f0; }
+  .btn.selected-green .zh { color: #3a7a55; }
+  .btn.selected-red { border-color: var(--accent3); background: #fdecea; }
+  .btn.selected-red .zh { color: var(--accent3); }
+  .water-row { display: flex; align-items: center; gap: 10px; }
+  .water-row input[type=number] {
+    width: 90px; border: 2px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; font-size: 1rem; font-family: inherit; color: var(--text); background: white; outline: none;
+  }
+  .water-row input[type=number]:focus { border-color: var(--accent); }
+  .water-label { font-size: 0.9rem; color: var(--sub); }
+  .note-area {
+    width: 100%; border: 2px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-size: 0.95rem; font-family: inherit; color: var(--text);
+    background: white; resize: vertical; min-height: 72px; outline: none; line-height: 1.6;
+  }
+  .note-area:focus { border-color: var(--accent); }
+  .note-hint { margin-top: 6px; font-size: 0.78rem; color: var(--sub); }
+  .note-hint-id { font-style: italic; color: #6aaa7a; font-size: 0.75rem; margin-top: 2px; }
+  .save-btn {
+    width: 100%; padding: 15px; font-size: 1.1rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), #d4996a); color: white;
+    border: none; border-radius: 14px; cursor: pointer; margin-top: 6px;
+    letter-spacing: 1px; box-shadow: 0 4px 14px rgba(192,133,90,0.30);
+    transition: opacity 0.2s; font-family: inherit;
+  }
+  .save-btn:active { opacity: 0.82; }
+  .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .sync-status { text-align: center; font-size: 0.85rem; margin-top: 8px; min-height: 22px; color: var(--sub); }
+  .sync-status.ok { color: #3a7a55; font-weight: 600; }
+  .sync-status.err { color: var(--accent3); }
+  .sync-status.sending { color: var(--accent); }
+  .poop-alert {
+    display: none; background: #fff3cd; border: 2px solid #f0c040;
+    border-radius: 10px; padding: 8px 12px; margin-top: 10px;
+    font-size: 0.85rem; color: #7a5c00; text-align: center;
+  }
+  .history-toggle {
+    width: 100%; padding: 11px; font-size: 0.95rem; font-weight: 700;
+    background: white; color: var(--sub); border: 2px solid var(--border);
+    border-radius: 12px; cursor: pointer; margin: 10px 0 0; font-family: inherit;
+  }
+  #historyArea { display: none; margin-top: 10px; }
+  .hist-card {
+    background: white; border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 10px; position: relative;
+  }
+  .hist-date { font-weight: 700; font-size: 1rem; color: var(--accent); margin-bottom: 8px; }
+  .hist-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; font-size: 0.88rem; }
+  .hist-item { background: var(--zh-bg); border-radius: 6px; padding: 3px 9px; color: var(--text); }
+  .hist-note { margin-top: 6px; font-size: 0.85rem; color: var(--sub); background: #f5f0ea; border-radius: 7px; padding: 5px 9px; }
+  .hist-del { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #cbb; font-size: 1.1rem; cursor: pointer; padding: 2px 6px; }
+  .export-btn {
+    width: 100%; padding: 11px; font-size: 0.9rem; font-weight: 600;
+    background: white; color: var(--accent2); border: 2px solid var(--accent2);
+    border-radius: 12px; cursor: pointer; margin-top: 8px; font-family: inherit;
+  }
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #3a7a55; color: white; padding: 12px 28px; border-radius: 30px;
+    font-size: 1rem; font-weight: 700; box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    text-align: center; max-width: 80vw;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="header-emoji">👵❤️</span>
+  <div class="header-zh">阿嬤每日健康記錄</div>
+  <div class="header-id">Catatan Kesehatan Nenek Harian</div>
+</header>
+
+<div class="date-row">
+  <span>📅</span>
+  <input type="date" id="dateInput">
+</div>
+
+<!-- 1. 排便 -->
+<div class="card">
+  <div class="card-header">
+    <div class="label-zh">1️⃣ 排便</div>
+    <div class="label-id">Buang Air Besar</div>
+  </div>
+  <div class="card-body">
+    <div class="btn-row" id="poop">
+      <button class="btn" data-val="有" onclick="selectBtn(this,'poop','selected-green')">
+        <span class="zh">✅ 有</span><span class="id">Ada</span>
+      </button>
+      <button class="btn" data-val="沒有" onclick="selectBtn(this,'poop','selected-red')">
+        <span class="zh">❌ 沒有</span><span class="id">Tidak ada</span>
+      </button>
+    </div>
+    <div class="poop-alert" id="poopAlert">
+      ⚠️ 已連續多天未排便，請留意是否需要用藥助排便<br>
+      <span style="color:#a08030;font-size:0.78rem;font-style:italic">Sudah beberapa hari tidak BAB, tolong perhatikan apakah perlu obat pencahar</span>
+    </div>
+  </div>
+</div>
+
+<!-- 2. 大便性狀 -->
+<div class="card">
+  <div class="card-header">
+    <div class="label-zh">2️⃣ 大便性狀</div>
+    <div class="label-id">Kondisi Tinja</div>
+  </div>
+  <div class="card-body">
+    <div class="btn-row" id="stool">
+      <button class="btn" data-val="硬" onclick="selectBtn(this,'stool','selected-red')">
+        <span class="zh">🪨 硬</span><span class="id">Keras</span>
+      </button>
+      <button class="btn" data-val="正常" onclick="selectBtn(this,'stool','selected-green')">
+        <span class="zh">👍 正常</span><span class="id">Normal</span>
+      </button>
+      <button class="btn" data-val="軟" onclick="selectBtn(this,'stool','selected')">
+        <span class="zh">💧 軟</span><span class="id">Lembek</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. 喝水 -->
+<div class="card">
+  <div class="card-header">
+    <div class="label-zh">3️⃣ 喝水量</div>
+    <div class="label-id">Jumlah Minum Air</div>
+  </div>
+  <div class="card-body">
+    <div class="water-row">
+      <input type="number" id="water" placeholder="0" min="0" max="3000" step="50">
+      <div>
+        <div class="water-label">ml／毫升</div>
+        <div class="water-label" style="color:#6aaa7a;font-style:italic;font-size:0.78rem;">mililiter</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. 走路 -->
+<div class="card">
+  <div class="card-header">
+    <div class="label-zh">4️⃣ 走路活動</div>
+    <div class="label-id">Aktivitas Berjalan</div>
+  </div>
+  <div class="card-body">
+    <div class="btn-row" id="walk">
+      <button class="btn" data-val="有" onclick="selectBtn(this,'walk','selected-green')">
+        <span class="zh">🚶 有</span><span class="id">Ada</span>
+      </button>
+      <button class="btn" data-val="沒有" onclick="selectBtn(this,'walk','selected-red')">
+        <span class="zh">🛋️ 沒有</span><span class="id">Tidak ada</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 5. 用藥 -->
+<div class="card">
+  <div class="card-header">
+    <div class="label-zh">5️⃣ 用藥</div>
+    <div class="label-id">Minum Obat</div>
+  </div>
+  <div class="card-body">
+    <div class="btn-row" id="meds">
+      <button class="btn" data-val="有" onclick="selectBtn(this,'meds','selected-green')">
+        <span class="zh">💊 有</span><span class="id">Ada</span>
+      </button>
+      <button class="btn" data-val="沒有" onclick="selectBtn(this,'meds','selected-red')">
+        <span class="zh">🚫 沒有</span><span class="id">Tidak ada</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 6. 精神 -->
+<div class="card">
+  <div class="card-header">
+    <div class="label-zh">6️⃣ 精神狀態</div>
+    <div class="label-id">Kondisi Semangat</div>
+  </div>
+  <div class="card-body">
+    <div class="btn-row" id="spirit">
+      <button class="btn" data-val="好" onclick="selectBtn(this,'spirit','selected-green')">
+        <span class="zh">😊 好</span><span class="id">Baik</span>
+      </button>
+      <button class="btn" data-val="普通" onclick="selectBtn(this,'spirit','selected')">
+        <span class="zh">😐 普通</span><span class="id">Biasa</span>
+      </button>
+      <button class="btn" data-val="不好" onclick="selectBtn(this,'spirit','selected-red')">
+        <span class="zh">😔 不好</span><span class="id">Buruk</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 備註 -->
+<div class="card">
+  <div class="card-header">
+    <div class="label-zh">📌 備註</div>
+    <div class="label-id">Catatan Tambahan</div>
+  </div>
+  <div class="card-body">
+    <textarea class="note-area" id="notes" placeholder="肚子痛 / 吃很少 / 睡不好 / 其他..."></textarea>
+    <div class="note-hint">💡 肚子痛 / 吃很少 / 睡不好 / 其他</div>
+    <div class="note-hint-id">Sakit perut / Makan sedikit / Tidur kurang / Lainnya</div>
+  </div>
+</div>
+
+<button class="save-btn" id="saveBtn" onclick="saveRecord()">
+  💾 儲存今日記錄 ／ Simpan Catatan Hari Ini
+</button>
+<div class="sync-status" id="syncStatus"></div>
+
+<button class="history-toggle" onclick="toggleHistory()">
+  📋 查看歷史記錄 ／ Lihat Riwayat
+</button>
+<div id="historyArea"></div>
+
+<button class="export-btn" onclick="exportCSV()">
+  📤 匯出 CSV ／ Export CSV
+</button>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyQVP7xFTNs4h0cZp228l-IQJepnUENUDoqAQixlTtlQ7ogO8r58ZVFi9qI-9fvrurO/exec';
+const STORAGE_KEY = 'grandma_health_v2';
+let selections = { poop:'', stool:'', walk:'', meds:'', spirit:'' };
+
+function selectBtn(btn, group, cls) {
+  document.querySelectorAll('#' + group + ' .btn').forEach(b =>
+    b.classList.remove('selected','selected-green','selected-red')
+  );
+  btn.classList.add(cls);
+  selections[group] = btn.dataset.val;
+  if (group === 'poop') checkPoopAlert();
+}
+
+function checkPoopAlert() {
+  const records = loadRecords();
+  const today = document.getElementById('dateInput').value;
+  const sorted = Object.keys(records).filter(d => d < today).sort().reverse().slice(0, 2);
+  const allNoPoop = sorted.length >= 2 && sorted.every(d => records[d].poop === '沒有');
+  document.getElementById('poopAlert').style.display =
+    (allNoPoop && selections.poop === '沒有') ? 'block' : 'none';
+}
+
+function loadRecords() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+}
+
+async function saveRecord() {
+  const date = document.getElementById('dateInput').value;
+  if (!date) { showToast('請先選擇日期 / Pilih tanggal dulu'); return; }
+
+  const record = {
+    date: date,
+    poop: selections.poop,
+    stool: selections.stool,
+    walk: selections.walk,
+    meds: selections.meds,
+    spirit: selections.spirit,
+    water: document.getElementById('water').value,
+    notes: document.getElementById('notes').value.trim(),
+    savedAt: new Date().toLocaleString('zh-TW')
+  };
+
+  // 先存本機備份
+  const records = loadRecords();
+  records[date] = record;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+
+  // 同步到 Google 試算表（img方式，iPhone/Android/電腦全部相容）
+  var btn = document.getElementById('saveBtn');
+  var status = document.getElementById('syncStatus');
+  btn.disabled = true;
+  status.className = 'sync-status sending';
+  status.textContent = '⏳ 正在同步到雲端... / Menyinkronkan...';
+
+  var params = 'date=' + encodeURIComponent(record.date)
+    + '&poop='    + encodeURIComponent(record.poop)
+    + '&stool='   + encodeURIComponent(record.stool)
+    + '&walk='    + encodeURIComponent(record.walk)
+    + '&meds='    + encodeURIComponent(record.meds)
+    + '&spirit='  + encodeURIComponent(record.spirit)
+    + '&water='   + encodeURIComponent(record.water)
+    + '&notes='   + encodeURIComponent(record.notes)
+    + '&savedAt=' + encodeURIComponent(record.savedAt)
+    + '&t=' + Date.now();
+
+  var img = new Image();
+  img.onload = img.onerror = function() {
+    status.className = 'sync-status ok';
+    status.textContent = '☁️ 已同步到 Google 試算表！/ Tersinkron!';
+    showToast('✅ 儲存並同步成功！');
+    btn.disabled = false;
+    renderHistory();
+  };
+  img.src = GAS_URL + '?' + params;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function toggleHistory() {
+  const area = document.getElementById('historyArea');
+  if (!area.style.display || area.style.display === 'none') {
+    area.style.display = 'block';
+    renderHistory();
+  } else {
+    area.style.display = 'none';
+  }
+}
+
+function renderHistory() {
+  const records = loadRecords();
+  const area = document.getElementById('historyArea');
+  const dates = Object.keys(records).sort().reverse();
+  if (!dates.length) {
+    area.innerHTML = '<div style="text-align:center;color:#aaa;padding:16px">尚無記錄 / Belum ada catatan</div>';
+    return;
+  }
+  area.innerHTML = dates.map(function(date) {
+    const r = records[date];
+    const items = [
+      r.poop   ? '排便：' + r.poop   : '',
+      r.stool  ? '大便：' + r.stool  : '',
+      r.walk   ? '走路：' + r.walk   : '',
+      r.meds   ? '用藥：' + r.meds   : '',
+      r.spirit ? '精神：' + r.spirit : '',
+      r.water  ? '喝水：' + r.water + 'ml' : '',
+    ].filter(Boolean);
+    const noteHtml = r.notes ? '<div class="hist-note">📌 ' + r.notes + '</div>' : '';
+    const warn = r.poop === '沒有' ? ' ⚠️' : '';
+    return '<div class="hist-card">' +
+      '<button class="hist-del" onclick="delRecord(\'' + date + '\')">✕</button>' +
+      '<div class="hist-date">📅 ' + date + warn + '</div>' +
+      '<div class="hist-row">' + items.map(function(i){ return '<span class="hist-item">' + i + '</span>'; }).join('') + '</div>' +
+      noteHtml +
+      '<div style="font-size:0.72rem;color:#bbb;margin-top:6px">' + (r.savedAt||'') + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function delRecord(date) {
+  if (!confirm('刪除 ' + date + ' 的記錄？\nHapus catatan ' + date + '?')) return;
+  const records = loadRecords();
+  delete records[date];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  renderHistory();
+  showToast('已刪除 / Dihapus');
+}
+
+function exportCSV() {
+  const records = loadRecords();
+  const dates = Object.keys(records).sort();
+  if (!dates.length) { showToast('尚無資料可匯出'); return; }
+  const header = '日期,排便,大便性狀,走路,用藥,精神,喝水(ml),備註,儲存時間\n';
+  const rows = dates.map(function(d) {
+    const r = records[d];
+    return d + ',' + (r.poop||'') + ',' + (r.stool||'') + ',' + (r.walk||'') + ',' +
+      (r.meds||'') + ',' + (r.spirit||'') + ',' + (r.water||'') + ',"' +
+      (r.notes||'').replace(/"/g,'""') + '",' + (r.savedAt||'');
+  });
+  const csv = '\uFEFF' + header + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '阿嬤健康記錄.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  showToast('📤 匯出成功！');
+}
+
+// 初始化日期為今天
+const today = new Date();
+const yyyy = today.getFullYear();
+const mm = String(today.getMonth()+1).padStart(2,'0');
+const dd = String(today.getDate()).padStart(2,'0');
+document.getElementById('dateInput').value = yyyy + '-' + mm + '-' + dd;
+
+// 載入今日已有記錄
+(function() {
+  const records = loadRecords();
+  const todayKey = yyyy + '-' + mm + '-' + dd;
+  if (!records[todayKey]) return;
+  const r = records[todayKey];
+  document.getElementById('water').value = r.water || '';
+  document.getElementById('notes').value = r.notes || '';
+  const clsMap = {
+    poop:   { '有':'selected-green', '沒有':'selected-red' },
+    stool:  { '硬':'selected-red', '正常':'selected-green', '軟':'selected' },
+    walk:   { '有':'selected-green', '沒有':'selected-red' },
+    meds:   { '有':'selected-green', '沒有':'selected-red' },
+    spirit: { '好':'selected-green', '普通':'selected', '不好':'selected-red' }
+  };
+  ['poop','stool','walk','meds','spirit'].forEach(function(group) {
+    if (!r[group]) return;
+    const btn = Array.from(document.querySelectorAll('#' + group + ' .btn')).find(function(b){ return b.dataset.val === r[group]; });
+    if (btn) {
+      btn.classList.add(clsMap[group][r[group]] || 'selected');
+      selections[group] = r[group];
+    }
+  });
+})();
+</script>
+</body>
+</html>
