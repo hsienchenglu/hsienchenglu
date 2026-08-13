@@ -487,11 +487,21 @@ function b64ToBytes(base64) {
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 const Speech = {
   rec: null,
   want: false,
   speaking: false,
+  starting: false,
   voices: [],
+
+  /** 連續「開始後馬上就結束」的次數，用來判斷辨識服務是不是壞了 */
+  rapidFails: 0,
+  lastStartAt: 0,
+  /** 因為切到背景而暫停，回到前景要自動接回去 */
+  pausedByHide: false,
 
   supported() { return !!SR; },
 
@@ -521,10 +531,17 @@ const Speech = {
   },
 
   begin() {
-    if (!this.want || this.speaking || this.rec) return;
+    if (!this.want || this.speaking || this.rec || this.starting) return;
+    // 分頁被切到背景時不要重啟，iOS 會直接把行程收掉
+    if (document.hidden) return;
+
+    this.starting = true;
+    this.lastStartAt = Date.now();
+
     const rec = new SR();
     rec.lang = LANGS[prefs.lang].stt;
-    rec.interimResults = true;
+    // iOS 的即時辨識結果事件很密集又不穩，關掉可以明顯降低當掉的機率
+    rec.interimResults = !IS_IOS;
     rec.continuous = false;
     rec.maxAlternatives = 1;
 
@@ -537,6 +554,7 @@ const Speech = {
       }
       if (interim) Call.showPartial(interim);
       if (final.trim()) {
+        this.rapidFails = 0; // 有辨識出東西，代表服務是好的
         Call.showPartial('');
         Call.sendUtterance(final.trim());
       }
@@ -554,17 +572,44 @@ const Speech = {
 
     rec.onend = () => {
       this.rec = null;
-      if (this.want && !this.speaking) setTimeout(() => this.begin(), 200);
-      else Call.micUI(false);
+      this.starting = false;
+      if (!this.want || this.speaking) { Call.micUI(false); return; }
+
+      // 開始不到 0.6 秒就結束，代表辨識服務其實沒在運作。
+      // 這種情況下原本會每 0.2 秒重試一次，等於每秒建立五個辨識物件，
+      // 在 iPhone 上很快就把行程拖垮——改成指數退避，連續失敗就停手。
+      const tooFast = Date.now() - this.lastStartAt < 600;
+      this.rapidFails = tooFast ? this.rapidFails + 1 : 0;
+
+      if (this.rapidFails >= 6) {
+        this.want = false;
+        this.rapidFails = 0;
+        Call.micUI(false);
+        toast('語音辨識一直中斷，已暫停。點一下麥克風可重新開始');
+        return;
+      }
+
+      const delay = tooFast ? Math.min(400 * 2 ** (this.rapidFails - 1), 5000) : 250;
+      setTimeout(() => this.begin(), delay);
     };
 
     try {
       rec.start();
       this.rec = rec;
+      this.starting = false;
       Call.micUI(true);
     } catch (e) {
+      this.starting = false;
       this.rec = null;
-      setTimeout(() => this.begin(), 500);
+      this.rapidFails++;
+      if (this.rapidFails >= 6) {
+        this.want = false;
+        this.rapidFails = 0;
+        Call.micUI(false);
+        toast('無法啟動語音辨識，點一下麥克風可重試');
+      } else {
+        setTimeout(() => this.begin(), 800);
+      }
     }
   },
 
@@ -575,6 +620,7 @@ const Speech = {
   },
 
   kill() {
+    this.starting = false;
     if (this.rec) {
       this.rec.onend = null;
       try { this.rec.stop(); } catch (e) { /* 已停止 */ }
@@ -618,6 +664,7 @@ const Speech = {
 
 const Wave = {
   canvas: null, ctx: null, raf: 0, level: 0, active: false, phase: 0,
+  w: 0, h: 0,
 
   init() {
     this.canvas = $('wave');
@@ -632,12 +679,29 @@ const Wave = {
 
   bump() { this.level = 1; },
 
+  /**
+   * 只有尺寸真的變了才動 canvas.width／height。
+   * 每一幀都設定會強制重新配置繪圖緩衝區，一秒 60 次，
+   * 在 iPhone 上足以把整個網頁行程的記憶體壓垮。
+   */
+  resize() {
+    const c = this.canvas;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2); // 3x 螢幕沒必要，只是浪費記憶體
+    const w = Math.round(c.clientWidth * dpr);
+    const h = Math.round(56 * dpr);
+    if (w !== this.w || h !== this.h) {
+      c.width = this.w = w;
+      c.height = this.h = h;
+    }
+  },
+
   loop() {
     this.raf = requestAnimationFrame(() => this.loop());
     const c = this.canvas, ctx = this.ctx;
     if (!c || !ctx) return;
-    const w = (c.width = c.clientWidth * (window.devicePixelRatio || 1));
-    const h = (c.height = 56 * (window.devicePixelRatio || 1));
+    this.resize();
+    const w = this.w, h = this.h;
+    if (!w || !h) return;
     ctx.clearRect(0, 0, w, h);
     if (!this.active && this.level <= 0.02) {
       cancelAnimationFrame(this.raf);
@@ -813,6 +877,13 @@ const Standby = {
     }
     if (typeof data !== 'object' || !data.callId || !data.from) return;
     if (this.pending && this.pending.callId === data.callId) return;
+
+    // 超過兩分鐘的來電視為殘留（例如對方的網頁當掉沒清乾淨）。
+    // 不處理的話，一打開 App 就會跳出一通根本沒人在撥的電話。
+    if (data.ts && Date.now() - data.ts > 120000) {
+      fbDelete(`users/${this.account}/incoming`).catch(() => {});
+      return;
+    }
 
     // 已經在通話中就直接回覆忙線
     if (Call.active) {
@@ -1226,6 +1297,25 @@ function wire() {
     showScreen('screenMain');
   };
   $('btnTest').onclick = testConnection;
+
+  // 網頁如果在通話中被系統關掉，Firebase 裡會留下沒清乾淨的來電節點，
+  // 之後就會一直跳出假來電或撥不出去。這顆按鈕是給使用者的自救出口。
+  $('btnReset').onclick = async () => {
+    if (!isConfigured()) { toast('請先完成設定'); return; }
+    const btn = $('btnReset');
+    btn.disabled = true;
+    try {
+      await fbDelete(`users/${sanitize(prefs.account)}/incoming`);
+      Standby.pending = null;
+      Standby.hideIncoming();
+      Standby.stop();
+      Standby.start();
+      toast('已清除，可以重新撥號了');
+    } catch (e) {
+      toast('清除失敗：' + e.message);
+    }
+    btn.disabled = false;
+  };
   $('setRing').oninput = (e) => { $('ringLabel').textContent = `連續響 ${e.target.value} 次`; };
   $('btnTestRing').onclick = () => Ringer.start(parseInt($('setRing').value, 10) || 2);
 
@@ -1302,16 +1392,33 @@ function wire() {
     if (e.key === 'Enter') $('btnCall').click();
   });
 
-  // 通話中不小心關掉分頁時，至少通知對方
-  window.addEventListener('beforeunload', () => {
+  // 通話中不小心關掉分頁時，至少通知對方。
+  // iOS 幾乎不會觸發 beforeunload，pagehide 才是可靠的那個。
+  const markEnded = () => {
     if (Call.active && !Call.ending) {
       navigator.sendBeacon?.(fbUrl(`calls/${Call.callId}/state`), JSON.stringify('ended'));
     }
-  });
+  };
+  window.addEventListener('beforeunload', markEnded);
+  window.addEventListener('pagehide', markEnded);
 
-  // 分頁回到前景時，螢幕鎖可能已經被系統釋放
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && Call.active) Call.keepAwake(true);
+    if (document.hidden) {
+      // 切到背景時一定要把麥克風收起來。iOS 會因為背景錄音直接
+      // 把整個網頁行程收掉，回來時就變成「打不開、不能通話」。
+      if (Speech.want) {
+        Speech.pausedByHide = true;
+        Speech.stop();
+      }
+      return;
+    }
+    if (Call.active) {
+      Call.keepAwake(true); // 螢幕鎖可能已經被系統釋放
+      if (Speech.pausedByHide) {
+        Speech.pausedByHide = false;
+        Speech.start();
+      }
+    }
   });
 }
 
