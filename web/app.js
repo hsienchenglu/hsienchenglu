@@ -436,7 +436,12 @@ const Push = {
       await fetch('/api/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: peerKey, dbUrl: prefs.dbUrl, dbSecret: prefs.dbSecret }),
+        body: JSON.stringify({
+          to: peerKey,
+          dbUrl: prefs.dbUrl,
+          dbSecret: prefs.dbSecret,
+          repeat: prefs.ring, // 和「連續響幾次」用同一個設定
+        }),
       });
     } catch (e) {
       /* 推播失敗不影響通話本身：對方只要開著網頁就收得到 */

@@ -17,6 +17,15 @@ const env = (key: string): string | undefined => {
   return g.Netlify?.env?.get(key) ?? g.process?.env?.[key];
 };
 
+/** 兩次推播之間隔多久。太短會被當成同一次提示，太長對方已經接了。 */
+const REPEAT_GAP_MS = 3000;
+
+/**
+ * Netlify 免費方案的函式上限是 10 秒，超過會被中斷。
+ * 留 2 秒安全邊際，時間不夠就少敲幾次，不要冒著整個函式被砍掉的風險。
+ */
+const DEADLINE_MS = 8000;
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -103,7 +112,7 @@ export default async (req: Request) => {
     return json({ error: '伺服器尚未設定 VAPID 金鑰' }, 501);
   }
 
-  let body: { to?: string; dbUrl?: string; dbSecret?: string };
+  let body: { to?: string; dbUrl?: string; dbSecret?: string; repeat?: number };
   try {
     body = await req.json();
   } catch {
@@ -146,28 +155,60 @@ export default async (req: Request) => {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      Authorization: `vapid t=${jwt}, k=${publicKey}`,
-      TTL: '60',
-      Urgency: 'high',
-    },
-  });
+  const headers = {
+    Authorization: `vapid t=${jwt}, k=${publicKey}`,
+    TTL: '60',
+    Urgency: 'high',
+  };
 
-  // 404／410 代表訂閱已失效，順手清掉，避免每次撥號都白打一次
-  if (res.status === 404 || res.status === 410) {
-    await fetch(fbUrl(dbUrl, `users/${to}/push`, body.dbSecret), { method: 'DELETE' }).catch(() => {});
-    return json({ sent: false, reason: '對方的推播訂閱已失效' });
+  // 敲不只一次，跟鈴聲連響的道理一樣——一聲通知音很容易漏掉。
+  // 通知用同一個 tag 加上 renotify，所以第二次會取代第一次並重新提示，
+  // 不會在通知欄堆成兩則。
+  const repeat = Math.min(Math.max(Number(body.repeat) || 2, 1), 5);
+  const startedAt = Date.now();
+  let sent = 0;
+
+  for (let i = 0; i < repeat; i++) {
+    if (i > 0) {
+      if (Date.now() - startedAt + REPEAT_GAP_MS > DEADLINE_MS) break;
+      await new Promise((r) => setTimeout(r, REPEAT_GAP_MS));
+      // 對方已經接聽或撥號方已取消，就不必再敲了
+      const stillRinging = await isStillRinging(dbUrl, to, body.dbSecret);
+      if (!stillRinging) break;
+    }
+
+    const res = await fetch(endpoint, { method: 'POST', headers });
+
+    // 404／410 代表訂閱已失效，順手清掉，避免每次撥號都白打一次
+    if (res.status === 404 || res.status === 410) {
+      await fetch(fbUrl(dbUrl, `users/${to}/push`, body.dbSecret), { method: 'DELETE' }).catch(() => {});
+      return json({ sent: sent > 0, count: sent, reason: '對方的推播訂閱已失效' });
+    }
+
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      return json(
+        { sent: sent > 0, count: sent, error: `推播服務回應 ${res.status}`, detail: detail.slice(0, 200) },
+        sent > 0 ? 200 : 502
+      );
+    }
+    sent++;
   }
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    return json({ sent: false, error: `推播服務回應 ${res.status}`, detail: detail.slice(0, 200) }, 502);
-  }
-
-  return json({ sent: true });
+  return json({ sent: true, count: sent });
 };
+
+/** 來電節點還在，就代表對方還沒接也還沒被取消。 */
+async function isStillRinging(dbUrl: string, to: string, secret?: string) {
+  try {
+    const res = await fetch(fbUrl(dbUrl, `users/${to}/incoming`, secret), { cache: 'no-store' });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return !!(data && data.from);
+  } catch {
+    return false;
+  }
+}
 
 export const config = {
   path: '/api/push',

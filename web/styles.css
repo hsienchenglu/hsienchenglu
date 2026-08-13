@@ -25,10 +25,27 @@ body {
   min-height: 100vh;
 }
 
-/* 一次只顯示一個畫面 */
-.screen { display: none; padding: 16px; max-width: 640px; margin: 0 auto; }
+/*
+ * 一次只顯示一個畫面。
+ *
+ * iPhone 加入主畫面後，狀態列是半透明的，網頁內容會延伸到瀏海底下，
+ * 導致最上面的字被時間、電池蓋住，右上角的齒輪也按不到。
+ * 這裡用 env(safe-area-inset-*) 把安全區讓出來。
+ */
+.screen {
+  display: none;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px
+           calc(16px + env(safe-area-inset-bottom, 0px));
+  max-width: 640px;
+  margin: 0 auto;
+}
 .screen.active { display: block; }
-#screenCall.active, #screenIncoming.active { display: flex; flex-direction: column; min-height: 100vh; }
+#screenCall.active, #screenIncoming.active {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh; /* iOS 的 100vh 會把網址列算進去 */
+}
 
 h1 { font-size: 26px; margin: 0; }
 h2 { font-size: 16px; margin: 0; }
@@ -127,9 +144,12 @@ h2 { font-size: 16px; margin: 0; }
 .btn:active { transform: scale(0.98); }
 .btn:disabled { opacity: 0.5; cursor: default; }
 
+/* 44×44 是手指好按的最小尺寸，原本的 30×30 在手機上容易按空 */
 .icon-btn {
   background: none; border: none; color: var(--text-dim);
-  font-size: 22px; cursor: pointer; padding: 4px 8px;
+  font-size: 22px; cursor: pointer; padding: 0;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
 }
 
 .radio, .check {
@@ -207,7 +227,11 @@ li.mine .bubble .dst { color: #fff; }
 .fab:active { transform: scale(0.94); }
 
 /* 全螢幕來電 */
-.incoming-screen { align-items: center; text-align: center; padding-top: 12vh; }
+.incoming-screen {
+  align-items: center;
+  text-align: center;
+  padding-top: calc(10vh + env(safe-area-inset-top, 0px));
+}
 .avatar {
   width: 120px; height: 120px; margin-top: 24px;
   border-radius: 60px; background: var(--surface-high);
