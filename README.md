@@ -173,7 +173,8 @@ app/src/main/java/com/hsienchenglu/zhidtalk/
 
 1. Netlify 後台 → Site configuration → Environment variables
 2. 新增 `TRANSLATE_API_KEY`，值是你的 Google 翻譯、Gemini 或 OpenAI 金鑰
-3. 若用 Gemini 或 OpenAI，再加一個 `TRANSLATE_PROVIDER`，值填 `gemini` 或 `openai`
+3. 若用 Gemini，再加一個 `TRANSLATE_PROVIDER` = `gemini`
+   （OpenAI 金鑰因為固定是 `sk-` 開頭，會被自動辨識，不設也可以）
 4. 想換模型的話（僅 Gemini／OpenAI），可再加 `TRANSLATE_MODEL`，
    例如 `gpt-4o` 或 `gemini-2.5-pro`；不設就用預設的 `gpt-4o-mini`／`gemini-2.5-flash`
 5. 重新部署一次讓變數生效

@@ -34,7 +34,10 @@ class TranslateClient(private val prefs: Prefs) {
         if (from == to) return trimmed
         val key = prefs.translateKey
         if (key.isEmpty()) throw IOException("尚未設定翻譯 API 金鑰")
-        return when (prefs.translateProvider) {
+        // OpenAI 金鑰一律 sk- 開頭，選錯服務商時直接用金鑰格式修正
+        val provider =
+            if (key.startsWith("sk-")) Prefs.PROVIDER_OPENAI else prefs.translateProvider
+        return when (provider) {
             Prefs.PROVIDER_GEMINI -> translateWithGemini(trimmed, from, to, key)
             Prefs.PROVIDER_OPENAI -> translateWithOpenAI(trimmed, from, to, key)
             else -> translateWithGoogle(trimmed, from, to, key)

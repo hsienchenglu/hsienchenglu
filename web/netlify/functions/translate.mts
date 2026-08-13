@@ -22,6 +22,20 @@ const env = (key: string): string | undefined => {
   return g.Netlify?.env?.get(key) ?? g.process?.env?.[key];
 };
 
+/**
+ * 決定要用哪一家翻譯服務。
+ *
+ * 以 TRANSLATE_PROVIDER 為準；沒設的時候從金鑰格式推斷。
+ * OpenAI 的金鑰一律是 sk- 開頭，光憑這點就能認出來——
+ * 少一個必填設定，就少一種「金鑰貼對了卻打到別家 API」的失敗。
+ */
+function resolveProvider(key: string): string {
+  const explicit = (env('TRANSLATE_PROVIDER') || '').trim().toLowerCase();
+  if (explicit) return explicit;
+  if (key.startsWith('sk-')) return 'openai';
+  return 'google';
+}
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -52,7 +66,7 @@ export default async (req: Request) => {
   if (!text) return json({ error: '沒有要翻譯的內容' }, 400);
   if (text.length > 2000) return json({ error: '單句長度超過上限' }, 400);
 
-  const provider = (env('TRANSLATE_PROVIDER') || 'google').toLowerCase();
+  const provider = resolveProvider(key);
 
   try {
     let translated: string;

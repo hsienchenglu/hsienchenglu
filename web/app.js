@@ -171,8 +171,10 @@ async function translate(text, from, to) {
   }
 
   if (!prefs.apiKey) throw new Error('尚未設定翻譯金鑰');
-  if (prefs.provider === 'gemini') return translateGemini(trimmed, from, to, prefs.apiKey);
-  if (prefs.provider === 'openai') return translateOpenAI(trimmed, from, to, prefs.apiKey);
+  // OpenAI 金鑰一律 sk- 開頭，選錯服務商時直接用金鑰格式修正
+  const provider = prefs.apiKey.startsWith('sk-') ? 'openai' : prefs.provider;
+  if (provider === 'gemini') return translateGemini(trimmed, from, to, prefs.apiKey);
+  if (provider === 'openai') return translateOpenAI(trimmed, from, to, prefs.apiKey);
   return translateGoogle(trimmed, from, to, prefs.apiKey);
 }
 
