@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">譯通</string>
+
+    <!-- 通知通道 -->
+    <string name="ch_incoming">來電</string>
+    <string name="ch_incoming_desc">有人撥打翻譯通話時顯示</string>
+    <string name="ch_service">來電監聽</string>
+    <string name="ch_service_desc">保持連線才能接到來電</string>
+    <string name="svc_title">譯通待機中</string>
+    <string name="svc_text">可以接聽翻譯通話</string>
+
+    <!-- 語言 -->
+    <string name="lang_zh">中文</string>
+    <string name="lang_id">印尼文</string>
+    <string name="lang_pair">%1$s → %2$s</string>
+    <string name="speaks_fmt">對方說 %1$s</string>
+
+    <!-- 主畫面 -->
+    <string name="my_account_fmt">我的帳號：%1$s</string>
+    <string name="no_account">尚未設定帳號</string>
+    <string name="dial_title">撥打翻譯通話</string>
+    <string name="peer_hint">對方帳號</string>
+    <string name="call_button">撥號</string>
+    <string name="setup_hint">請先到設定填入帳號、資料庫網址與翻譯金鑰</string>
+    <string name="history_title">通話紀錄</string>
+    <string name="clear_all">全部刪除</string>
+    <string name="no_history">還沒有通話紀錄</string>
+    <string name="settings">設定</string>
+    <string name="history_detail">通話逐字稿</string>
+
+    <!-- 來電 -->
+    <string name="incoming_call">翻譯通話來電</string>
+    <string name="accept">接聽</string>
+    <string name="reject">拒接</string>
+
+    <!-- 通話中 -->
+    <string name="status_calling">撥號中…</string>
+    <string name="status_connected">通話中</string>
+    <string name="status_translating">翻譯中…</string>
+    <string name="mic_on_hint">請說話，停頓一下就會自動送出</string>
+    <string name="mic_off_hint">麥克風已關閉，點一下開始說話</string>
+    <string name="no_transcript">這通電話還沒有對話內容</string>
+    <string name="end_call_q">要結束通話嗎？</string>
+    <string name="hang_up">掛斷</string>
+    <string name="call_rejected">對方拒接</string>
+    <string name="call_peer_hung_up">對方已掛斷</string>
+    <string name="call_missed">未接來電</string>
+    <string name="call_no_answer">對方未接聽</string>
+    <string name="duration_fmt">通話 %1$s</string>
+    <string name="sentence_count">%1$d 句</string>
+
+    <!-- 設定頁 -->
+    <string name="settings_account">帳號</string>
+    <string name="settings_account_desc">你的帳號要告訴對方，對方才撥得進來。兩支手機請填不同帳號。</string>
+    <string name="my_account_hint">我的帳號</string>
+    <string name="peer_account_hint">常用對方帳號（可留空）</string>
+    <string name="settings_lang">我說的語言</string>
+    <string name="settings_lang_desc">另一方會自動使用另一種語言。</string>
+    <string name="settings_db">連線（Firebase Realtime Database）</string>
+    <string name="settings_db_desc">兩支手機填一樣的網址就能互相撥號。</string>
+    <string name="db_url_hint">資料庫網址 https://xxx.firebaseio.com</string>
+    <string name="db_secret_hint">資料庫密鑰（測試規則可留空）</string>
+    <string name="settings_translate">翻譯服務</string>
+    <string name="provider_google">Google 翻譯 API</string>
+    <string name="provider_gemini">Gemini API</string>
+    <string name="api_key_hint">API 金鑰</string>
+    <string name="settings_ring">來電鈴聲</string>
+    <string name="settings_ring_desc">使用手機內建的預設鈴聲，播完設定的次數就停。</string>
+    <string name="ring_times_fmt">連續響 %1$d 次</string>
+    <string name="auto_listen">通話中自動聆聽</string>
+    <string name="auto_speak">自動朗讀對方的話</string>
+    <string name="test_connection">測試連線與金鑰</string>
+    <string name="testing">測試中…</string>
+    <string name="test_ok">連線與金鑰都正常</string>
+    <string name="test_db_fail">資料庫連線失敗：%1$s</string>
+    <string name="test_tr_fail">翻譯金鑰測試失敗：%1$s</string>
+    <string name="save">儲存</string>
+    <string name="saved">已儲存</string>
+
+    <!-- 通用 -->
+    <string name="cancel">取消</string>
+    <string name="delete">刪除</string>
+    <string name="later">稍後</string>
+    <string name="go_settings">前往設定</string>
+    <string name="delete_record_q">刪除這筆通話紀錄？</string>
+    <string name="delete_record_msg">與 %1$s 的通話紀錄與逐字稿都會刪除。</string>
+    <string name="delete_record">刪除這筆紀錄</string>
+    <string name="clear_all_q">刪除全部通話紀錄？</string>
+    <string name="clear_all_msg">所有紀錄與逐字稿都會從這支手機刪除，無法復原。</string>
+    <string name="setup_needed">還差一點設定</string>
+    <string name="setup_needed_msg">需要填入你的帳號、Firebase 資料庫網址與翻譯 API 金鑰，才能撥打與接聽。</string>
+
+    <!-- 錯誤訊息 -->
+    <string name="err_no_peer">請輸入對方帳號</string>
+    <string name="err_call_self">不能撥給自己</string>
+    <string name="err_account_required">請填寫你的帳號</string>
+    <string name="err_db_url">網址必須以 https:// 開頭</string>
+    <string name="err_dial">撥號失敗：%1$s</string>
+    <string name="err_translate">翻譯失敗</string>
+    <string name="err_send">訊息送出失敗</string>
+    <string name="err_mic_permission">需要麥克風權限才能說話</string>
+    <string name="err_stt_unavailable">這支手機沒有可用的語音辨識服務</string>
+    <string name="err_stt_start">無法啟動語音辨識</string>
+    <string name="err_stt_network">語音辨識連線不穩</string>
+    <string name="err_tts_init">語音朗讀初始化失敗</string>
+    <string name="err_tts_lang">系統缺少%1$s的語音朗讀資料</string>
+
+    <!-- 無障礙 -->
+    <string name="cd_settings">設定</string>
+    <string name="cd_mic">麥克風開關</string>
+    <string name="cd_speaker">擴音開關</string>
+    <string name="cd_end">掛斷</string>
+    <string name="cd_delete">刪除</string>
+</resources>

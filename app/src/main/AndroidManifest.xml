@@ -47,13 +47,14 @@
             android:exported="false"
             android:label="@string/settings"
             android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.ZhIdTalk.WithBar"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".CallActivity"
             android:exported="false"
             android:launchMode="singleTop"
-            android:showOnLockScreen="true"
+            android:showWhenLocked="true"
             android:turnScreenOn="true" />
 
         <activity
@@ -61,7 +62,6 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
-            android:showOnLockScreen="true"
             android:showWhenLocked="true"
             android:turnScreenOn="true" />
 
@@ -69,7 +69,8 @@
             android:name=".HistoryDetailActivity"
             android:exported="false"
             android:label="@string/history_detail"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.ZhIdTalk.WithBar" />
 
         <service
             android:name=".CallService"
