@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0E1116">
 <title>譯通 — 中印即時翻譯通話</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>📞</text></svg>">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="譯通">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,13 +26,14 @@
     <button id="btnSettings" class="icon-btn" title="設定" aria-label="設定">⚙</button>
   </header>
 
-  <!-- 待機：瀏覽器要有一次點擊才允許播放鈴聲，所以用這顆按鈕上線 -->
+  <!-- 待機：連線會自動建立，但鈴聲與通知需要使用者點一下才能授權 -->
   <div id="standbyCard" class="card standby">
     <div>
       <div class="card-title">待機狀態</div>
       <div id="standbyState" class="sub">尚未上線，接不到來電</div>
+      <div id="standbyPush" class="sub"></div>
     </div>
-    <button id="btnStandby" class="btn primary small">上線待機</button>
+    <button id="btnStandby" class="btn primary small">啟用鈴聲與通知</button>
   </div>
 
   <!-- 來電卡片 -->

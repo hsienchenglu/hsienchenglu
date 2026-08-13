@@ -317,6 +317,167 @@ const Ringer = {
   },
 };
 
+// ───────────────────────────── 推播（網頁關著也收得到來電）
+
+const Push = {
+  reg: null,
+  enabled: false,
+
+  supported() {
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  },
+
+  /** iOS 必須先「加入主畫面」才拿得到推播權限。 */
+  needsInstallOnIos() {
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+    return isIos && !standalone;
+  },
+
+  async register() {
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+      this.reg = await navigator.serviceWorker.register('sw.js');
+      await this.saveConfig();
+      return this.reg;
+    } catch (e) {
+      console.warn('Service Worker 註冊失敗', e);
+      return null;
+    }
+  },
+
+  /** Service Worker 被推播叫醒時，要靠這份設定才知道去哪裡查來電。 */
+  async saveConfig() {
+    if (!('caches' in window)) return;
+    try {
+      const cache = await caches.open('zhid-config');
+      const body = JSON.stringify({
+        account: sanitize(prefs.account),
+        dbUrl: prefs.dbUrl,
+        dbSecret: prefs.dbSecret,
+      });
+      await cache.put(
+        '/__zhid_config',
+        new Response(body, { headers: { 'Content-Type': 'application/json' } })
+      );
+    } catch (e) {
+      /* 存不進去只影響背景通知，不影響前景通話 */
+    }
+  },
+
+  /** 建立訂閱並寫進 Firebase，讓對方撥號時能叫醒我。 */
+  async enable() {
+    if (!this.supported()) {
+      return { ok: false, reason: '這個瀏覽器不支援背景推播' };
+    }
+    if (this.needsInstallOnIos()) {
+      return { ok: false, reason: 'iPhone 請先用分享選單「加入主畫面」，再從主畫面開啟' };
+    }
+
+    const permission = await requestNotificationPermission();
+    if (permission !== 'granted') {
+      return { ok: false, reason: '沒有通知權限，背景時收不到來電' };
+    }
+
+    if (!this.reg) await this.register();
+    if (!this.reg) return { ok: false, reason: 'Service Worker 註冊失敗' };
+    await this.saveConfig();
+
+    let serverKey;
+    try {
+      const r = await fetch('/api/push-key');
+      if (r.status === 404 || r.status === 501) {
+        return { ok: false, reason: '伺服器尚未設定推播金鑰（VAPID）' };
+      }
+      if (!r.ok) return { ok: false, reason: '取得推播金鑰失敗 HTTP ' + r.status };
+      serverKey = (await r.json()).key;
+    } catch (e) {
+      return { ok: false, reason: '取得推播金鑰失敗：' + e.message };
+    }
+    if (!serverKey) return { ok: false, reason: '伺服器沒有回傳推播金鑰' };
+
+    let sub;
+    try {
+      sub = await this.reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await this.reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: b64ToBytes(serverKey),
+        });
+      }
+    } catch (e) {
+      // 金鑰換過時舊訂閱會失效，退掉重來一次
+      try {
+        const old = await this.reg.pushManager.getSubscription();
+        if (old) await old.unsubscribe();
+        sub = await this.reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: b64ToBytes(serverKey),
+        });
+      } catch (e2) {
+        return { ok: false, reason: '建立推播訂閱失敗：' + e2.message };
+      }
+    }
+
+    try {
+      await fbPut(`users/${sanitize(prefs.account)}/push`, JSON.parse(JSON.stringify(sub)));
+    } catch (e) {
+      return { ok: false, reason: '推播訂閱寫入資料庫失敗：' + e.message };
+    }
+
+    this.enabled = true;
+    return { ok: true };
+  },
+
+  /** 撥號時順手敲對方一下，讓他的手機跳出通知。 */
+  async wake(peerKey) {
+    try {
+      await fetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: peerKey, dbUrl: prefs.dbUrl, dbSecret: prefs.dbSecret }),
+      });
+    } catch (e) {
+      /* 推播失敗不影響通話本身：對方只要開著網頁就收得到 */
+    }
+  },
+};
+
+/**
+ * 舊版 Safari 的 requestPermission 只吃 callback 不回傳 Promise，
+ * 而且某些環境下兩種都不會回應——加上逾時，避免按鈕永遠卡在「啟用中」。
+ */
+function requestNotificationPermission() {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value || Notification.permission);
+    };
+    setTimeout(() => finish(Notification.permission), 20000);
+    try {
+      const maybePromise = Notification.requestPermission(finish);
+      if (maybePromise && typeof maybePromise.then === 'function') {
+        maybePromise.then(finish).catch(() => finish(Notification.permission));
+      }
+    } catch (e) {
+      finish(Notification.permission);
+    }
+  });
+}
+
+function b64ToBytes(base64) {
+  const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4))
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const raw = atob(padded);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
 // ───────────────────────────── 語音辨識與朗讀
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -631,14 +792,12 @@ const Standby = {
       return;
     }
     $('standbyState').textContent = `已上線：${prefs.account}`;
-    $('btnStandby').textContent = '離線';
   },
 
   stop() {
     if (this.stream) { this.stream.close(); this.stream = null; }
     this.account = '';
     $('standbyState').textContent = '尚未上線，接不到來電';
-    $('btnStandby').textContent = '上線待機';
   },
 
   onEvent(path, data) {
@@ -818,6 +977,10 @@ const Call = {
       this.end(false);
       return;
     }
+
+    // 對方可能沒開著網頁，敲一下推播把他的手機叫醒
+    Push.wake(peerKey);
+
     this.ringTimeout = setTimeout(() => {
       if (!this.connected && !this.ending) {
         toast('對方未接聽');
@@ -1054,6 +1217,7 @@ function wire() {
     toast('已儲存');
     Standby.stop();
     Standby.start();
+    Push.saveConfig(); // 帳號或資料庫換了，背景通知也要跟著更新
     showScreen('screenMain');
   };
   $('btnTest').onclick = testConnection;
@@ -1061,13 +1225,27 @@ function wire() {
   $('btnTestRing').onclick = () => Ringer.start(parseInt($('setRing').value, 10) || 2);
 
   $('btnStandby').onclick = async () => {
-    if (Standby.stream) { Standby.stop(); return; }
     if (!isConfigured()) { toast('請先到設定填入帳號與資料庫網址'); return; }
-    Ringer.prime(); // 借這次點擊解鎖音訊播放
-    if ('Notification' in window && Notification.permission === 'default') {
-      try { await Notification.requestPermission(); } catch (e) { /* 忽略 */ }
-    }
+    Ringer.prime(); // 借這次點擊解鎖音訊播放，之後才響得出鈴聲
     Standby.start();
+
+    const btn = $('btnStandby');
+    btn.disabled = true;
+    btn.textContent = '啟用中…';
+    const result = await Push.enable();
+    btn.disabled = false;
+
+    if (result.ok) {
+      btn.textContent = '已啟用';
+      $('standbyPush').textContent = '鈴聲與背景通知都已啟用';
+      $('standbyPush').className = 'sub accent';
+      toast('已啟用鈴聲與背景通知');
+    } else {
+      btn.textContent = '重新啟用';
+      $('standbyPush').textContent = '鈴聲已啟用；背景通知未啟用：' + result.reason;
+      $('standbyPush').className = 'sub';
+      toast(result.reason);
+    }
   };
 
   $('btnCall').onclick = () => {
@@ -1140,13 +1318,33 @@ function init() {
   refreshHeader();
   History.render();
   Wave.init();
+  Push.register();
+
+  // 從通知點進來時，Service Worker 會通知這裡
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'incoming-call') Standby.start();
+    });
+  }
 
   if (!isConfigured()) {
     showScreen('screenSettings');
     fillSettings();
     toast('請先完成設定');
-  } else if (!Speech.supported()) {
+    return;
+  }
+
+  // 設定完成就自動連線，這樣網頁一打開就等得到來電；
+  // 鈴聲與背景通知仍需要使用者按一下按鈕才能授權。
+  Standby.start();
+
+  if (!Speech.supported()) {
     toast('這個瀏覽器不支援語音辨識，請改用 Chrome 或 Edge');
+  }
+  if (Push.supported() && Notification.permission === 'granted') {
+    $('standbyPush').textContent = '已允許通知，建議按一次按鈕確認推播訂閱';
+  } else if (Push.needsInstallOnIos()) {
+    $('standbyPush').textContent = 'iPhone 請用分享選單「加入主畫面」，才能在背景收到來電';
   }
 }
 

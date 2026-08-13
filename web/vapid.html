@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>產生 VAPID 金鑰 — 譯通</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .out {
+    background: var(--surface-high);
+    border: 1px solid var(--outline);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    word-break: break-all;
+    user-select: all;
+    min-height: 20px;
+  }
+  .screen { display: block; }
+</style>
+</head>
+<body>
+<section class="screen">
+  <h1>產生 VAPID 金鑰</h1>
+  <p class="hint">
+    背景推播需要一組 VAPID 金鑰。按下按鈕會**在你這台裝置的瀏覽器裡**產生，
+    不會傳送到任何伺服器，也不會經過我。產生後把兩個值貼到 Netlify 的環境變數。
+  </p>
+
+  <button id="gen" class="btn primary block">產生金鑰</button>
+
+  <div class="card">
+    <div class="card-title">VAPID_PUBLIC_KEY</div>
+    <div class="hint">公開金鑰，前端會用到，不算機密。</div>
+    <div id="pub" class="out"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">VAPID_PRIVATE_KEY</div>
+    <div class="hint warn">私密金鑰，只能放在 Netlify 環境變數，不要貼給任何人。</div>
+    <div id="priv" class="out"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">接下來</div>
+    <div class="hint">
+      到 Netlify 後台 → Site configuration → Environment variables，新增這兩個變數
+      （名稱就用上面的標題），再重新部署一次網站即可。
+    </div>
+  </div>
+
+  <p class="hint center mb"><a href="./" style="color:var(--accent)">← 回到譯通</a></p>
+</section>
+
+<script>
+function bytesToB64url(buf) {
+  const b = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < b.length; i++) bin += String.fromCharCode(b[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+document.getElementById('gen').onclick = async () => {
+  const pubEl = document.getElementById('pub');
+  const privEl = document.getElementById('priv');
+  pubEl.textContent = '產生中…';
+  privEl.textContent = '';
+  try {
+    const pair = await crypto.subtle.generateKey(
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      true,
+      ['sign', 'verify']
+    );
+    // 公鑰用未壓縮格式（0x04 || x || y），這是 VAPID 規範要的形式
+    const raw = await crypto.subtle.exportKey('raw', pair.publicKey);
+    const jwk = await crypto.subtle.exportKey('jwk', pair.privateKey);
+    pubEl.textContent = bytesToB64url(raw);
+    privEl.textContent = jwk.d;
+  } catch (e) {
+    pubEl.textContent = '產生失敗：' + e.message;
+  }
+};
+</script>
+</body>
+</html>
