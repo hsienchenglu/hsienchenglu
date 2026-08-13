@@ -12,3 +12,8 @@ local.properties
 *.aab
 *.keystore
 !debug.keystore
+
+# Gradle wrapper 的 jar 是二進位檔，改由 Android Studio 或 CI 自行取得
+gradle/wrapper/gradle-wrapper.jar
+gradlew
+gradlew.bat

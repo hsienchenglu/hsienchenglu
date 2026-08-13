@@ -21,13 +21,13 @@ jobs:
       - name: 安裝 Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 設定 Gradle
+      - name: 安裝 Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
 
       - name: 編譯 debug APK
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
       - name: 上傳 APK
         uses: actions/upload-artifact@v4
