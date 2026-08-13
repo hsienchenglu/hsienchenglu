@@ -140,3 +140,68 @@ app/src/main/java/com/hsienchenglu/zhidtalk/
 ├── Ringer.kt                內建鈴聲，可設定次數
 └── HistoryStore.kt          通話紀錄本機儲存
 ```
+
+---
+
+# 網頁版（web/）
+
+同一套通訊協定的瀏覽器版本，可以部署到 Netlify。**網頁版和 Android 版互通**——
+只要兩邊填同一個 Firebase 資料庫網址，網頁可以撥給手機 App，手機也可以撥給網頁。
+
+## 部署到 Netlify
+
+**方法一：拖曳上傳（最快）**
+
+把 `web` 資料夾整個拖進 <https://app.netlify.com/drop> 即可。
+
+**方法二：連結 GitHub（建議，之後改動會自動更新）**
+
+在 Netlify 選 Add new site → Import an existing project → 選這個 repo，然後設定：
+
+- Base directory：`web`
+- Build command：留空
+- Publish directory：`.`
+
+## 設定翻譯金鑰（重要）
+
+金鑰若寫在前端，任何人打開網頁都能看到。所以網頁版預設走一個 Netlify Function 代理，
+金鑰只留在伺服器：
+
+1. Netlify 後台 → Site configuration → Environment variables
+2. 新增 `TRANSLATE_API_KEY`，值是你的 Google 翻譯或 Gemini 金鑰
+3. 若用 Gemini，再加一個 `TRANSLATE_PROVIDER` = `gemini`
+4. 重新部署一次讓變數生效
+
+沒有設環境變數時，網頁會退回使用設定頁裡填的金鑰（存在瀏覽器本機）。
+這種情況請務必到 Google Cloud 主控台幫金鑰加上 HTTP 參照網址限制，只允許你的網域。
+
+## 使用方式
+
+1. 用手機或電腦的 **Chrome／Edge** 開啟網站（必須是 HTTPS，Netlify 預設就是）
+2. 第一次會直接進設定頁：填帳號、我說的語言、Firebase 資料庫網址
+3. 回主畫面按 **「上線待機」**——這一下點擊很重要，瀏覽器要有使用者互動才允許播放鈴聲
+4. 輸入對方帳號按撥號；對方的網頁會響鈴並跳出全螢幕來電畫面
+5. 接聽後直接說話，停頓一下就會自動辨識、翻譯並送出
+
+## 網頁版與 Android 版的差別
+
+| | Android App | 網頁版 |
+| --- | --- | --- |
+| 來電鈴聲 | 手機內建的預設鈴聲 | 內建合成的電話鈴聲（瀏覽器讀不到系統鈴聲） |
+| 響兩次 | 支援 | 支援 |
+| 背景接聽 | 前景服務常駐，App 關著也接得到 | **網頁必須開著**，分頁關掉就接不到來電 |
+| 鎖定畫面來電 | 支援 | 不支援 |
+| 瀏覽器需求 | 不需要 | 語音辨識需要 Chrome／Edge；iOS Safari 支援不完整 |
+| 語音辨識與朗讀 | 系統內建 | 瀏覽器內建（Chrome 用 Google 線上辨識） |
+
+換句話說，**要能像真的電話那樣隨時接到來電，還是需要 Android 版**；
+網頁版適合「兩邊都先講好、同時打開網頁」的使用情境，好處是不用安裝、電腦也能用。
+
+## 本機測試
+
+```
+cd web && python3 -m http.server 8899
+```
+
+然後開 <http://localhost:8899>。注意 `localhost` 才允許使用麥克風，
+用 IP 位址開會被瀏覽器擋下。翻譯代理只有部署到 Netlify（或用 `netlify dev`）時才會生效。

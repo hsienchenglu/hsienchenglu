@@ -1,0 +1,12 @@
+# 這個資料夾本身就是網站根目錄：
+# 用 GitHub 連結部署時，把 base directory 設成 web；
+# 用拖曳上傳時，直接把 web 資料夾丟進 Netlify 即可。
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
