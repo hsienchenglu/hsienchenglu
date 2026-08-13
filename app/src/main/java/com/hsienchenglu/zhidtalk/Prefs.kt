@@ -34,7 +34,7 @@ class Prefs(context: Context) {
         get() = sp.getString(K_DB_SECRET, "") ?: ""
         set(v) = sp.edit().putString(K_DB_SECRET, v.trim()).apply()
 
-    /** 翻譯服務供應商：google（Cloud Translation v2）或 gemini */
+    /** 翻譯服務供應商：google（Cloud Translation v2）、gemini 或 openai */
     var translateProvider: String
         get() = sp.getString(K_TR_PROVIDER, PROVIDER_GOOGLE) ?: PROVIDER_GOOGLE
         set(v) = sp.edit().putString(K_TR_PROVIDER, v).apply()
@@ -64,6 +64,7 @@ class Prefs(context: Context) {
     companion object {
         const val PROVIDER_GOOGLE = "google"
         const val PROVIDER_GEMINI = "gemini"
+        const val PROVIDER_OPENAI = "openai"
 
         private const val K_MY_ACCOUNT = "my_account"
         private const val K_PEER_ACCOUNT = "peer_account"

@@ -64,6 +64,7 @@
     <string name="settings_translate">翻譯服務</string>
     <string name="provider_google">Google 翻譯 API</string>
     <string name="provider_gemini">Gemini API</string>
+    <string name="provider_openai">OpenAI API</string>
     <string name="api_key_hint">API 金鑰</string>
     <string name="settings_ring">來電鈴聲</string>
     <string name="settings_ring_desc">使用手機內建的預設鈴聲，播完設定的次數就停。</string>

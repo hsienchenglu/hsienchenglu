@@ -38,10 +38,10 @@ class SettingsActivity : AppCompatActivity() {
         b.editApiKey.setText(prefs.translateKey)
 
         if (prefs.myLang == Lang.ZH) b.radioZh.isChecked = true else b.radioId.isChecked = true
-        if (prefs.translateProvider == Prefs.PROVIDER_GEMINI) {
-            b.radioGemini.isChecked = true
-        } else {
-            b.radioGoogle.isChecked = true
+        when (prefs.translateProvider) {
+            Prefs.PROVIDER_GEMINI -> b.radioGemini.isChecked = true
+            Prefs.PROVIDER_OPENAI -> b.radioOpenai.isChecked = true
+            else -> b.radioGoogle.isChecked = true
         }
 
         b.sliderRing.value = prefs.ringRepeat.toFloat()
@@ -68,8 +68,11 @@ class SettingsActivity : AppCompatActivity() {
         prefs.dbSecret = b.editDbSecret.text?.toString()?.trim().orEmpty()
         prefs.translateKey = b.editApiKey.text?.toString()?.trim().orEmpty()
         prefs.myLang = if (b.radioZh.isChecked) Lang.ZH else Lang.ID
-        prefs.translateProvider =
-            if (b.radioGemini.isChecked) Prefs.PROVIDER_GEMINI else Prefs.PROVIDER_GOOGLE
+        prefs.translateProvider = when {
+            b.radioGemini.isChecked -> Prefs.PROVIDER_GEMINI
+            b.radioOpenai.isChecked -> Prefs.PROVIDER_OPENAI
+            else -> Prefs.PROVIDER_GOOGLE
+        }
         prefs.ringRepeat = b.sliderRing.value.toInt()
         prefs.autoListen = b.switchAutoListen.isChecked
         prefs.autoSpeak = b.switchAutoSpeak.isChecked

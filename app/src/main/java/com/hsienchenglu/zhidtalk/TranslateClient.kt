@@ -36,6 +36,7 @@ class TranslateClient(private val prefs: Prefs) {
         if (key.isEmpty()) throw IOException("尚未設定翻譯 API 金鑰")
         return when (prefs.translateProvider) {
             Prefs.PROVIDER_GEMINI -> translateWithGemini(trimmed, from, to, key)
+            Prefs.PROVIDER_OPENAI -> translateWithOpenAI(trimmed, from, to, key)
             else -> translateWithGoogle(trimmed, from, to, key)
         }
     }
@@ -107,6 +108,45 @@ class TranslateClient(private val prefs: Prefs) {
                 sb.append(parts.optJSONObject(i)?.optString("text").orEmpty())
             }
             val out = sb.toString().trim()
+            if (out.isEmpty()) throw IOException("翻譯服務沒有回傳結果")
+            return out
+        }
+    }
+
+    private fun translateWithOpenAI(text: String, from: Lang, to: Lang, key: String): String {
+        val fromName = if (from == Lang.ZH) "Traditional Chinese" else "Indonesian"
+        val toName = if (to == Lang.ZH) "Traditional Chinese" else "Indonesian"
+        val system = "You translate $fromName into $toName for a live phone call. " +
+            "Each input is one spoken utterance. Keep it colloquial and natural. " +
+            "Reply with the translation only — no quotes, no explanation, no romanisation."
+
+        val payload = JSONObject().apply {
+            put("model", "gpt-4o-mini")
+            put("temperature", 0.2)
+            put(
+                "messages",
+                JSONArray()
+                    .put(JSONObject().put("role", "system").put("content", system))
+                    .put(JSONObject().put("role", "user").put("content", text))
+            )
+        }
+
+        val req = Request.Builder()
+            .url("https://api.openai.com/v1/chat/completions")
+            .header("Authorization", "Bearer $key")
+            .post(payload.toString().toRequestBody(jsonType))
+            .build()
+
+        client.newCall(req).execute().use { resp ->
+            val raw = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw IOException(errorOf(raw, resp.code))
+            val out = JSONObject(raw)
+                .optJSONArray("choices")
+                ?.optJSONObject(0)
+                ?.optJSONObject("message")
+                ?.optString("content")
+                ?.trim()
+                ?: throw IOException("翻譯服務回應格式不符")
             if (out.isEmpty()) throw IOException("翻譯服務沒有回傳結果")
             return out
         }

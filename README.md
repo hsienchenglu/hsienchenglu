@@ -65,12 +65,16 @@ adb install -r app-debug.apk
 
 ### 2. 準備翻譯 API 金鑰
 
-App 支援兩種，擇一即可：
+App 支援三種，擇一即可：
 
 | 服務 | 取得方式 | 特性 |
 | --- | --- | --- |
-| Google 翻譯 API | Google Cloud Console 啟用 Cloud Translation API，建立 API 金鑰 | 延遲最低，通話體驗最好 |
-| Gemini API | <https://aistudio.google.com/apikey> 直接產生 | 有免費額度，語氣較自然，稍慢 |
+| Google 翻譯 API | Google Cloud Console 啟用 Cloud Translation API，建立 API 金鑰 | 延遲最低（約 0.3 秒），通話體驗最順 |
+| Gemini API | <https://aistudio.google.com/apikey> 直接產生 | 有免費額度，口語語氣自然，約慢 1 秒 |
+| OpenAI API | <https://platform.openai.com/api-keys> 產生 | 用 `gpt-4o-mini`，口語與稱謂處理好，約慢 1 秒 |
+
+> 通話講求即時，若覺得對話節奏被拖慢，改用 Google 翻譯 API 會明顯順一些；
+> 若在意語氣自然（例如長輩、雇主與看護之間的對話），用 Gemini 或 OpenAI 較好。
 
 ### 3. 在 App 內填寫設定
 
@@ -168,9 +172,11 @@ app/src/main/java/com/hsienchenglu/zhidtalk/
 金鑰只留在伺服器：
 
 1. Netlify 後台 → Site configuration → Environment variables
-2. 新增 `TRANSLATE_API_KEY`，值是你的 Google 翻譯或 Gemini 金鑰
-3. 若用 Gemini，再加一個 `TRANSLATE_PROVIDER` = `gemini`
-4. 重新部署一次讓變數生效
+2. 新增 `TRANSLATE_API_KEY`，值是你的 Google 翻譯、Gemini 或 OpenAI 金鑰
+3. 若用 Gemini 或 OpenAI，再加一個 `TRANSLATE_PROVIDER`，值填 `gemini` 或 `openai`
+4. 想換模型的話（僅 Gemini／OpenAI），可再加 `TRANSLATE_MODEL`，
+   例如 `gpt-4o` 或 `gemini-2.5-pro`；不設就用預設的 `gpt-4o-mini`／`gemini-2.5-flash`
+5. 重新部署一次讓變數生效
 
 沒有設環境變數時，網頁會退回使用設定頁裡填的金鑰（存在瀏覽器本機）。
 這種情況請務必到 Google Cloud 主控台幫金鑰加上 HTTP 參照網址限制，只允許你的網域。

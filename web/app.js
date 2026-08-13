@@ -171,9 +171,9 @@ async function translate(text, from, to) {
   }
 
   if (!prefs.apiKey) throw new Error('尚未設定翻譯金鑰');
-  return prefs.provider === 'gemini'
-    ? translateGemini(trimmed, from, to, prefs.apiKey)
-    : translateGoogle(trimmed, from, to, prefs.apiKey);
+  if (prefs.provider === 'gemini') return translateGemini(trimmed, from, to, prefs.apiKey);
+  if (prefs.provider === 'openai') return translateOpenAI(trimmed, from, to, prefs.apiKey);
+  return translateGoogle(trimmed, from, to, prefs.apiKey);
 }
 
 async function translateGoogle(text, from, to, key) {
@@ -212,6 +212,35 @@ async function translateGemini(text, from, to, key) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error?.message || '翻譯失敗 HTTP ' + r.status);
   const out = (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
+  if (!out) throw new Error('翻譯服務沒有回傳結果');
+  return out;
+}
+
+async function translateOpenAI(text, from, to, key) {
+  const fromName = from === 'zh' ? 'Traditional Chinese' : 'Indonesian';
+  const toName = to === 'zh' ? 'Traditional Chinese' : 'Indonesian';
+
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'system',
+          content:
+            `You translate ${fromName} into ${toName} for a live phone call. ` +
+            'Each input is one spoken utterance. Keep it colloquial and natural. ' +
+            'Reply with the translation only — no quotes, no explanation.',
+        },
+        { role: 'user', content: text },
+      ],
+    }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error?.message || '翻譯失敗 HTTP ' + r.status);
+  const out = (j.choices?.[0]?.message?.content || '').trim();
   if (!out) throw new Error('翻譯服務沒有回傳結果');
   return out;
 }

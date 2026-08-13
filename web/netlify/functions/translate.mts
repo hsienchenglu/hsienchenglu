@@ -5,8 +5,9 @@
  * 這樣金鑰就不會隨著網頁原始碼外流。
  *
  * 環境變數：
- *   TRANSLATE_API_KEY   必填，Google Cloud Translation 或 Gemini 的金鑰
- *   TRANSLATE_PROVIDER  選填，google（預設）或 gemini
+ *   TRANSLATE_API_KEY   必填，Google Cloud Translation、Gemini 或 OpenAI 的金鑰
+ *   TRANSLATE_PROVIDER  選填，google（預設）、gemini 或 openai
+ *   TRANSLATE_MODEL     選填，僅 gemini／openai 使用，可指定模型名稱
  */
 
 const LANG_NAMES: Record<string, string> = {
@@ -54,10 +55,10 @@ export default async (req: Request) => {
   const provider = (env('TRANSLATE_PROVIDER') || 'google').toLowerCase();
 
   try {
-    const translated =
-      provider === 'gemini'
-        ? await viaGemini(text, from, to, key)
-        : await viaGoogle(text, from, to, key);
+    let translated: string;
+    if (provider === 'gemini') translated = await viaGemini(text, from, to, key);
+    else if (provider === 'openai') translated = await viaOpenAI(text, from, to, key);
+    else translated = await viaGoogle(text, from, to, key);
     return json({ text: translated });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 502);
@@ -103,6 +104,39 @@ async function viaGemini(text: string, from: string, to: string, key: string) {
     .map((p: any) => p.text || '')
     .join('')
     .trim();
+  if (!out) throw new Error('翻譯服務沒有回傳結果');
+  return out;
+}
+
+async function viaOpenAI(text: string, from: string, to: string, key: string) {
+  const fromName = LANG_NAMES[from] || from;
+  const toName = LANG_NAMES[to] || to;
+  const model = env('TRANSLATE_MODEL') || 'gpt-4o-mini';
+
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'system',
+          content:
+            `You translate ${fromName} into ${toName} for a live phone call. ` +
+            'Each input is one spoken utterance. Keep it colloquial and natural. ' +
+            'Reply with the translation only — no quotes, no explanation, no romanisation.',
+        },
+        { role: 'user', content: text },
+      ],
+    }),
+  });
+  const data: any = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data?.error?.message || `翻譯失敗 HTTP ${r.status}`);
+  const out = (data?.choices?.[0]?.message?.content || '').trim();
   if (!out) throw new Error('翻譯服務沒有回傳結果');
   return out;
 }

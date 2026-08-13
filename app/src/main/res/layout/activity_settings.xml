@@ -191,6 +191,13 @@
                     android:layout_height="wrap_content"
                     android:text="@string/provider_gemini"
                     android:textColor="@color/text_primary" />
+
+                <RadioButton
+                    android:id="@+id/radioOpenai"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/provider_openai"
+                    android:textColor="@color/text_primary" />
             </RadioGroup>
 
             <com.google.android.material.textfield.TextInputLayout
