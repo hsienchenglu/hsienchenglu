@@ -36,6 +36,36 @@ h2 { font-size: 16px; margin: 0; }
 .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .topbar h1 { flex: 1; }
 
+/*
+ * 主畫面的標題列改成置中，設定鈕壓在右上角，
+ * 這樣 logo 才能緊跟在標題右邊。設定頁與逐字稿頁仍用上面的左右排版。
+ */
+.topbar-main {
+  display: block;
+  position: relative;
+  text-align: center;
+  padding: 0 44px;
+}
+.topbar-main .icon-btn { position: absolute; top: 0; right: 0; }
+
+.brand { display: flex; align-items: center; justify-content: center; gap: 12px; }
+/* 蓋掉 .topbar h1 的 flex:1，否則標題會撐開，和 logo 之間空一大段 */
+.brand h1 { flex: 0 0 auto; line-height: 1.1; }
+
+/*
+ * AICOM 的字是深紅色，直接放在深色背景上會看不清楚，
+ * 所以襯一塊白底。之後若換成淺色版本的 logo，把 background 拿掉即可。
+ */
+.brand-logo {
+  height: 30px;
+  width: auto;
+  max-width: 130px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 7px;
+  padding: 3px 6px;
+}
+
 .sub { color: var(--text-dim); font-size: 13px; }
 .accent { color: var(--accent); }
 .big { font-size: 24px; font-weight: 700; }

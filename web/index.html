@@ -17,12 +17,15 @@
 
 <!-- ───────────────── 主畫面 ───────────────── -->
 <section id="screenMain" class="screen active">
-  <header class="topbar">
-    <div>
+  <header class="topbar topbar-main">
+    <div class="brand">
       <h1>譯通</h1>
-      <div id="myAccountLabel" class="sub">尚未設定帳號</div>
-      <div id="myLangLabel" class="sub accent"></div>
+      <!-- 找不到 logo.png 時自動隱藏，不會留下破圖 -->
+      <img id="brandLogo" class="brand-logo" src="logo.png" alt="AICOM"
+           onerror="this.remove()">
     </div>
+    <div id="myAccountLabel" class="sub">尚未設定帳號</div>
+    <div id="myLangLabel" class="sub accent"></div>
     <button id="btnSettings" class="icon-btn" title="設定" aria-label="設定">⚙</button>
   </header>
 
