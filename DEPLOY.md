@@ -1,0 +1,450 @@
+# 譯通 部署與設定筆記
+
+> 建立日期：2026-08-13
+> 這份筆記記錄從零建立整套系統的完整步驟、所有帳號與金鑰的位置、
+> 實際踩到的問題與解法，以及日後維護要注意的事。
+
+---
+
+## 一、成品清單
+
+| 項目 | 位置 |
+| --- | --- |
+| 網頁版 | <https://zhid-talk.netlify.app> |
+| Netlify 後台 | <https://app.netlify.com/projects/zhid-talk> |
+| 程式碼 | <https://github.com/hsienchenglu/hsienchenglu> |
+| 分支 | `claude/chinese-indonesian-translation-app-lqptxh` |
+| Android APK | GitHub → Actions → Build APK → Artifacts |
+| VAPID 金鑰產生器 | <https://zhid-talk.netlify.app/vapid.html> |
+
+---
+
+## 二、系統架構
+
+### 核心設計：不傳語音，只傳文字
+
+這套系統**沒有語音串流**，走的是「本地辨識 → 翻譯 → 傳文字 → 對方本地朗讀」：
+
+```
+   我這一端                    雲端                     對方那一端
+┌──────────────┐                                    ┌──────────────┐
+│ 1. 語音辨識   │                                    │ 4. 顯示文字   │
+│   （手機／    │                                    │ 5. 語音朗讀   │
+│    瀏覽器）   │                                    │   （手機／    │
+└──────┬───────┘                                    │    瀏覽器）   │
+       │                                            └──────▲───────┘
+       │ 2. 翻譯                                           │
+       ▼                                                   │
+┌──────────────┐                                           │
+│ OpenAI API   │                                           │
+│（經 Netlify   │                                           │
+│  Function）   │                                           │
+└──────┬───────┘                                           │
+       │ 3. 寫入原文 + 譯文                                  │ 即時推送
+       ▼                                                   │
+┌───────────────────────────────────────────────────────────┴──┐
+│         Firebase Realtime Database（REST / SSE）              │
+└───────────────────────────────────────────────────────────────┘
+```
+
+**為什麼這樣設計**
+
+- 一般 4G 就跑得動，不需要 WebRTC 的打洞與 TURN 伺服器
+- 流量極低（只有文字）
+- 雙方都留有完整逐字稿
+- 代價：每句約 1～2 秒延遲，要一句一句講
+
+### 三個外部服務的角色
+
+| 服務 | 角色 | 可否替換 |
+| --- | --- | --- |
+| Firebase Realtime Database | 訊令（誰撥給誰）+ 逐句文字傳遞 | 可換成任何支援 SSE 的即時資料庫 |
+| OpenAI API | 中↔印翻譯 | 可換 Google 翻譯或 Gemini，設定頁可選 |
+| Netlify | 靜態網頁託管 + 兩支 Serverless 函式 | 可換 Vercel／Cloudflare，函式要改寫 |
+
+---
+
+## 三、完整部署步驟（從零重建）
+
+### 步驟 1：建立 Firebase Realtime Database
+
+1. 開 <https://console.firebase.google.com>，用 Google 帳號登入
+2. **新增專案** → 取名（例如 `zhid-talk`）→ Google Analytics 可以關掉
+3. 左側選 **建構 → Realtime Database → 建立資料庫**
+4. 位置選 **Singapore (asia-southeast1)**（台灣與印尼連過去都近）
+5. 安全性規則選 **以測試模式啟動**
+6. 建好後，**資料庫頁面內容區上方**那一行網址就是要用的，長這樣：
+
+```
+https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app
+```
+
+> ⚠️ 不要複製瀏覽器網址列的 `console.firebase.google.com/...`，那是後台頁面不是資料庫。
+
+**測試模式 30 天後會過期**，要長期使用就到「規則」分頁改成：
+
+```json
+{
+  "rules": {
+    "users": { ".read": true, ".write": true },
+    "calls": { ".read": true, ".write": true },
+    "healthcheck": { ".read": true, ".write": true }
+  }
+}
+```
+
+這組規則是公開讀寫的。以自家兩三個人使用來說可接受（網址不好猜，通話內容講完就沒保留價值）。
+要更嚴謹的話，到「專案設定 → 服務帳戶 → 資料庫密鑰」產生密鑰，填進 App 的「資料庫密鑰」欄位，
+再把規則全改成 `false`（密鑰可繞過規則）。
+
+### 步驟 2：取得 OpenAI API 金鑰
+
+1. <https://platform.openai.com/api-keys> → **Create new secret key**
+2. 取個名字（例如 `zhid-talk`），建立後**立刻複製**，那串只會顯示一次
+3. 到 <https://platform.openai.com/settings/organization/limits> 設每月用量上限（建議 5 美元），
+   萬一金鑰外流也有停損
+
+> 也可以改用 Google 翻譯 API（延遲最低）或 Gemini（有免費額度），三選一即可。
+
+### 步驟 3：部署網頁到 Netlify
+
+**建立站台**
+
+1. <https://app.netlify.com> 登入
+2. 把 `web` 資料夾**裡面的內容**拖到 <https://app.netlify.com/drop>
+3. 站台建立後可在 Site configuration → General → Change site name 改成好記的名稱
+
+**之後每次更新網頁**
+
+到 <https://app.netlify.com/projects/zhid-talk/deploys>，把 `web` 資料夾再拖一次即可。
+
+> ⚠️ 拖曳型站台**沒有** Trigger deploy 按鈕（那是連結 Git 的站台才有），
+> 更新網頁或環境變數生效都靠重新拖曳。
+
+### 步驟 4：設定 Netlify 環境變數
+
+位置：**Site configuration → Environment variables → Add a variable**
+
+每個變數的設定：
+- **Scopes**：選 **All scopes**（Specific scopes 是付費功能）
+- **Values**：選 **Same value for all deploy contexts**
+- 「Contains secret values」如果被鎖在付費方案後面，跳過即可
+
+| Key | Value | 必填 |
+| --- | --- | --- |
+| `TRANSLATE_API_KEY` | OpenAI／Google／Gemini 的金鑰 | ✅ |
+| `TRANSLATE_PROVIDER` | `openai`／`gemini`／`google` | 選填 |
+| `TRANSLATE_MODEL` | 例如 `gpt-4o`，不設用 `gpt-4o-mini` | 選填 |
+| `VAPID_PUBLIC_KEY` | 步驟 5 產生的公開金鑰 | 背景通知才需要 |
+| `VAPID_PRIVATE_KEY` | 步驟 5 產生的私密金鑰 | 背景通知才需要 |
+| `VAPID_SUBJECT` | 例如 `mailto:you@example.com` | 選填 |
+
+> `TRANSLATE_PROVIDER` 其實可以不填 —— 程式會從金鑰格式自動判斷（`sk-` 開頭就是 OpenAI）。
+> 這個自動判斷是後來加的，就是為了避免忘記設這個變數造成的錯誤（見第六節）。
+
+**設完環境變數一定要重新部署**（把 `web` 資料夾再拖一次），函式才讀得到新值。
+
+### 步驟 5：產生 VAPID 金鑰（背景通知用）
+
+1. 開 <https://zhid-talk.netlify.app/vapid.html>
+2. 按 **產生金鑰** —— 金鑰是在你的瀏覽器裡用 Web Crypto 產生的，不會傳到任何伺服器
+3. 一次會產生**成對的兩把**：
+
+| 欄位 | 長度 | 性質 |
+| --- | --- | --- |
+| `VAPID_PUBLIC_KEY` | 87 字元 | 公開，會送到瀏覽器 |
+| `VAPID_PRIVATE_KEY` | 43 字元 | **私密**，只能放 Netlify 環境變數 |
+
+4. 兩個都貼到 Netlify 環境變數，然後重新部署
+
+> ⚠️ 兩把金鑰數學上成對，不能分開產生也不能混用不同批次的。
+> 重新產生的話兩個都要換，而且所有裝置要重新按一次「啟用鈴聲與通知」。
+
+### 步驟 6：手機端設定（網頁版）
+
+**Android Chrome**
+1. 開 <https://zhid-talk.netlify.app>
+2. 選單 → **安裝應用程式**（或「加到主畫面」）
+3. 從主畫面圖示開啟
+
+**iPhone Safari**（需要 iOS 16.4 以上）
+1. 開 <https://zhid-talk.netlify.app>
+2. 分享 → **加入主畫面**
+3. **必須從主畫面圖示開啟**，直接用 Safari 開是收不到推播的
+
+**兩邊都要做的設定**
+
+進設定頁（右上齒輪）：
+
+| 欄位 | 手機 A | 手機 B |
+| --- | --- | --- |
+| 我的帳號 | `ayah` | `sari` |
+| 我說的語言 | 中文 | 印尼文 |
+| 資料庫網址 | **同一個** | **同一個** |
+| API 金鑰 | 留空（走伺服器代理） | 留空 |
+
+> 帳號**必須不同**，語言**必須一個中文一個印尼文**（一樣的話翻譯會空轉）。
+
+按 **測試連線與翻譯** 確認通過，儲存後回主畫面，按一次 **啟用鈴聲與通知**。
+這一下點擊做三件事：解鎖瀏覽器音訊（否則鈴聲響不出來）、要求通知權限、建立推播訂閱。
+每支裝置只需要按一次。
+
+### 步驟 7：編譯 Android APK
+
+1. 把程式碼推到 GitHub 的指定分支
+2. GitHub Actions 會自動觸發 **Build APK**，約 3 分鐘
+3. 到 <https://github.com/hsienchenglu/hsienchenglu/actions> → 點最新一次執行 →
+   下方 **Artifacts** 下載 `zhidtalk-debug-apk`
+4. 解壓縮得到 `app-debug.apk`，傳到手機安裝（要允許「安裝未知來源應用程式」）
+
+有 `adb` 的話：
+
+```
+adb install -r app-debug.apk
+```
+
+**App 內的設定**與網頁版相同，但要注意：
+
+- App 沒有伺服器代理，**API 金鑰要直接填在設定頁**（存在手機本機）
+- 要到 **手機設定 → 系統 → 語言與輸入設定 → 文字轉語音輸出**，
+  在 Google 語音服務裡下載「中文」與「Indonesia」的語音資料，否則對方的話唸不出來
+
+---
+
+## 四、環境變數與金鑰總表
+
+| 名稱 | 放在哪裡 | 是否機密 | 用途 |
+| --- | --- | --- | --- |
+| Firebase 資料庫網址 | App 設定頁 / 網頁設定頁 | 否 | 訊令與訊息傳遞 |
+| Firebase 資料庫密鑰 | App 設定頁（選填） | **是** | 繞過安全性規則 |
+| `TRANSLATE_API_KEY` | Netlify 環境變數 | **是** | 翻譯 |
+| `VAPID_PUBLIC_KEY` | Netlify 環境變數 | 否 | 建立推播訂閱 |
+| `VAPID_PRIVATE_KEY` | Netlify 環境變數 | **是** | 簽署推播請求 |
+
+**外洩後果比較**
+
+- OpenAI 金鑰：別人可以拿去用並算在你帳上 → 最嚴重，務必設用量上限
+- Firebase 網址：別人可以讀寫通話訊令 → 中等，可用資料庫密鑰加強
+- VAPID 私鑰：別人最多能對已訂閱裝置發推播，不會產生費用也拿不到通話內容 → 較輕
+
+---
+
+## 五、Firebase 資料結構
+
+```
+users/
+  {帳號}/
+    incoming/          ← 目前的來電，沒來電時為 null
+      callId, from, fromLang, ts
+    push/              ← 推播訂閱（網頁版用）
+      endpoint, keys
+calls/
+  {通話ID}/
+    meta/              ← caller, callerLang, callee, startTs
+    state              ← ringing / accepted / rejected / ended
+    msgs/
+      {自動ID}/        ← from, srcLang, dstLang, src, dst, ts
+healthcheck/           ← 「測試連線」寫入的位置
+```
+
+**Android 版與網頁版用完全相同的結構**，所以兩者可以互相撥號。
+
+通話結束後 `calls/` 底下的資料會留著（沒有自動清理）。想清空的話到 Firebase 主控台
+手動刪除 `calls` 節點即可，不影響功能。
+
+---
+
+## 六、這次實際踩到的問題與解法
+
+> 這一節是這份筆記最有價值的部分，日後遇到類似狀況可直接對照。
+
+### 6-1　翻譯失敗：「API key not valid. Please pass a valid API key.」
+
+**現象**：資料庫測試通過，翻譯測試失敗，錯誤訊息如上。
+
+**真正原因**：這句是 **Google 的**錯誤訊息，不是 OpenAI 的。
+代表函式拿著 OpenAI 金鑰去打了 Google 的 API —— 因為 `TRANSLATE_PROVIDER` 沒設定，
+程式退回預設的 `google`。
+
+**解法**：補上 `TRANSLATE_PROVIDER=openai` 並重新部署。
+
+**後續改善**：程式已改成從金鑰格式自動判斷（`sk-` 開頭 → OpenAI），
+現在就算沒設這個變數也能正常運作。
+
+**教訓**：錯誤訊息的「口音」可以定位問題來源。Google 的 API 用
+「API key not valid. Please pass a valid API key.」；OpenAI 用
+「Incorrect API key provided: sk-...」。看到不屬於預期服務的錯誤訊息，
+就代表請求送錯家了。
+
+### 6-2　環境變數設了卻沒生效
+
+**現象**：在 Netlify 後台加了環境變數，但函式行為沒變。
+
+**原因有兩個，都遇到了**：
+
+1. **沒有重新部署** —— Netlify 的函式在部署時綁定環境變數，改了變數要重新部署才生效
+2. **變數根本沒寫進去** —— 透過 API 設定時回報成功，實際查詢卻不存在（疑似前一次呼叫逾時導致）
+
+**解法**：設完變數後，**一定要回頭讀一次確認變數真的存在**，再重新部署。
+
+### 6-3　找不到 Trigger deploy 按鈕
+
+**原因**：拖曳上傳建立的站台沒有連結 Git，所以沒有這顆按鈕。
+
+**解法**：重新部署的方式就是「把資料夾再拖一次」。
+
+### 6-4　GitHub 推送被拒（403）
+
+**現象**：`git push` 回 403；GitHub API 回
+`403 Resource not accessible by integration`。
+
+**判讀**：
+- 回 **403** = repo 在授權範圍內，但 App 缺少 **Contents 寫入權限**
+- 回 **404** = repo 根本不在授權範圍內
+
+兩者意義不同，不要搞混。
+
+**解法**：最後是在本機自行推送解決的。要注意解壓縮後**資料夾有兩層**，
+要進到有 `app`、`web` 的那一層才是 git repo（`.git` 是隱藏資料夾，
+用 `app`／`web` 在不在來判斷）。
+
+```
+git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-translation-app-lqptxh
+```
+
+### 6-5　GitHub 網頁上傳顯示「Uploads are disabled」
+
+網頁拖曳上傳這條路走不通，改用本機 `git push`。
+
+### 6-6　Netlify 的 Specific scopes 要付費
+
+環境變數的 Scopes 選 **All scopes** 即可，功能完全不受影響。
+「Contains secret values」如果也被鎖，跳過沒關係 —— 差別只是值在後台是否明文顯示。
+
+### 6-7　金鑰曾經明文出現在對話紀錄
+
+查詢 Netlify 環境變數時，未標記為 secret 的值會**完整回傳**。
+處理方式：到 OpenAI 產生新金鑰 → 在 Netlify 編輯變數換成新值 → 重新部署 →
+確認可用後撤銷舊金鑰。
+
+**日後原則**：金鑰一律自己在服務商後台貼上，不要經過對話。
+
+---
+
+## 七、日常維護
+
+### 更新網頁版
+
+1. 改 `web/` 底下的檔案
+2. 把 `web` 資料夾拖到 Netlify 的 Deploys 頁面
+3. 手機端可能需要**關掉 PWA 再重開**才會拿到新版
+   （Service Worker 已設定不快取，但頁面本身可能還在瀏覽器快取裡）
+
+### 更新 Android App
+
+1. 改 `app/` 底下的檔案，commit 後推到 GitHub
+2. 等 Actions 編完，下載新的 APK
+3. 直接覆蓋安裝即可（`adb install -r`），設定不會遺失
+
+### 更換 API 金鑰
+
+1. 服務商後台產生新金鑰
+2. Netlify → Environment variables → 編輯 `TRANSLATE_API_KEY`
+3. **重新部署**
+4. 網站設定頁按「測試連線與翻譯」確認
+5. 確認可用後，回服務商後台撤銷舊金鑰
+
+> 順序很重要：先確認新的能用，再撤銷舊的，中間不會斷線。
+
+### 費用注意
+
+- **Firebase**：免費方案額度很大，這種用量幾乎不可能超過
+- **Netlify**：免費方案含 100GB 流量、125,000 次函式呼叫／月，足夠有餘
+- **OpenAI**：唯一會產生費用的。`gpt-4o-mini` 一句話約 $0.00002，
+  講一小時大概幾分錢。記得設用量上限
+
+### 定期檢查
+
+| 項目 | 頻率 | 檢查什麼 |
+| --- | --- | --- |
+| Firebase 規則 | 建立後 30 天內 | 測試模式是否已過期 |
+| OpenAI 用量 | 每月 | 有無異常用量 |
+| 通話紀錄 | 隨意 | 手機本機的紀錄要不要清 |
+
+---
+
+## 八、疑難排解對照表
+
+| 現象 | 可能原因 | 處理 |
+| --- | --- | --- |
+| 測試連線失敗 | 資料庫網址填錯、規則過期 | 檢查網址結尾、看 Firebase 規則分頁 |
+| 翻譯失敗，訊息像 Google 的 | provider 判斷錯誤 | 補 `TRANSLATE_PROVIDER`，重新部署 |
+| 翻譯失敗，訊息像 OpenAI 的 | 金鑰失效或額度用盡 | 檢查 OpenAI 後台 |
+| 環境變數改了沒反應 | 沒重新部署 | 把 `web` 再拖一次 |
+| 撥號後對方沒反應 | 對方沒上線、帳號拼錯 | 確認對方網頁開著或已啟用推播 |
+| 收不到背景通知 | VAPID 沒設、沒按啟用、iOS 沒加主畫面 | 依步驟 5、6 檢查 |
+| 沒有鈴聲 | 沒按過「啟用鈴聲與通知」 | 瀏覽器規定要有使用者互動才能出聲 |
+| 對方的話沒唸出來 | 缺少該語言的語音資料 | 手機設定 → 文字轉語音輸出 → 下載 |
+| 語音辨識沒反應 | 麥克風權限、瀏覽器不支援 | 用 Chrome／Edge，檢查網址列權限圖示 |
+| 辨識不準 | 講太長、環境吵 | 一句一句講，講完停一秒 |
+| 講話變成自己聽自己 | （已處理）朗讀時會自動停麥克風 | 若仍發生，關閉「自動朗讀」再試 |
+
+---
+
+## 九、專案檔案結構
+
+```
+├── app/                                  Android App
+│   └── src/main/java/com/hsienchenglu/zhidtalk/
+│       ├── MainActivity.kt               撥號、來電卡片、通話紀錄
+│       ├── CallActivity.kt               通話畫面
+│       ├── IncomingCallActivity.kt       全螢幕來電
+│       ├── SettingsActivity.kt           設定
+│       ├── HistoryDetailActivity.kt      逐字稿
+│       ├── CallService.kt                背景來電監聽與響鈴
+│       ├── Signaling.kt                  Firebase REST / SSE
+│       ├── TranslateClient.kt            三家翻譯服務
+│       ├── SpeechManager.kt              語音辨識與朗讀
+│       ├── Ringer.kt                     內建鈴聲，可設次數
+│       └── HistoryStore.kt               通話紀錄本機儲存
+│
+├── web/                                  網頁版（部署到 Netlify）
+│   ├── index.html                        全部畫面
+│   ├── app.js                            所有邏輯
+│   ├── styles.css                        深色主題
+│   ├── sw.js                             Service Worker（背景通知）
+│   ├── manifest.webmanifest              PWA 設定
+│   ├── vapid.html                        VAPID 金鑰產生器
+│   ├── icons/                            PWA 圖示
+│   ├── netlify.toml                      部署設定與標頭
+│   └── netlify/functions/
+│       ├── translate.mts                 翻譯代理（金鑰留伺服器）
+│       ├── push.mts                      送出無內容推播
+│       └── push-key.mts                  提供 VAPID 公開金鑰
+│
+├── .github/workflows/android.yml         自動編譯 APK
+├── README.md                             使用說明
+└── DEPLOY.md                             本筆記
+```
+
+---
+
+## 十、背景通知的運作原理
+
+推播刻意設計成**不夾帶任何內容**：
+
+1. 撥號方寫入 Firebase 的 `users/{對方}/incoming`，並呼叫 `/api/push`
+2. Netlify 函式用 VAPID 私鑰簽一個 ES256 的 JWT，送一則**空的**推播到對方的推播端點
+3. 對方的 Service Worker 被系統喚醒，自己去 Firebase 讀 `users/{我}/incoming`
+4. 顯示通知，點一下開啟網頁進入接聽畫面
+
+**為什麼不夾帶內容**
+
+- 夾帶內容需要實作 RFC 8291 的加密（ECDH + HKDF + AES-128-GCM），程式碼量大且容易出錯
+- 不夾帶就完全不需要 npm 套件，Netlify 拖曳部署也能跑
+- **來電資訊不會經過 Google 或 Apple 的推播伺服器** —— 他們只知道「有人敲了這台裝置」
+
+**Service Worker 怎麼知道要去哪裡查**
+
+網頁在設定完成時，把帳號與資料庫網址寫進 Cache Storage 的 `/__zhid_config`；
+Service Worker 被喚醒後從那裡讀取。這是唯一能在「沒有任何頁面開著」時取得設定的方式。
