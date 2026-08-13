@@ -1,0 +1,11 @@
+# 從 repo 根目錄部署時使用的設定。
+# 若在 Netlify 後台把 base directory 設成 web，則會改用 web/netlify.toml。
+[build]
+  publish = "web"
+  functions = "web/netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
