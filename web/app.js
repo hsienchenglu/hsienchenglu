@@ -670,19 +670,32 @@ const Speech = {
       // 開始不到 0.6 秒就結束，代表辨識服務其實沒在運作。
       // 這種情況下原本會每 0.2 秒重試一次，等於每秒建立五個辨識物件，
       // 在 iPhone 上很快就把行程拖垮——改成指數退避，連續失敗就停手。
-      const tooFast = Date.now() - this.lastStartAt < 600;
-      this.rapidFails = tooFast ? this.rapidFails + 1 : 0;
-
-      if (this.rapidFails >= 6) {
-        this.want = false;
-        this.rapidFails = 0;
-        Call.micUI(false);
-        toast(t('err_stt_stopped'));
+      if (Date.now() - this.lastStartAt < 600) {
+        this.rapidFails++;
+        if (this.rapidFails >= 6) {
+          this.want = false;
+          this.rapidFails = 0;
+          Call.micUI(false);
+          toast(t('err_stt_stopped'));
+          return;
+        }
+        setTimeout(() => this.begin(), Math.min(400 * 2 ** (this.rapidFails - 1), 5000));
         return;
       }
 
-      const delay = tooFast ? Math.min(400 * 2 ** (this.rapidFails - 1), 5000) : 250;
-      setTimeout(() => this.begin(), delay);
+      /*
+       * 正常結束＝使用者講完停下來了。這裡刻意「不自動重開」。
+       *
+       * Android 每啟動一次語音辨識就會發出一聲提示音，那是系統發的，
+       * 網頁沒有權限關掉。原本講完一句就自動重開，等於整通電話一直在叮。
+       * 改成按一下開始講、講完再按一下（或停下來讓它自己收），
+       * 提示音就只在真正開口前響那一次。
+       */
+      this.rapidFails = 0;
+      this.want = false;
+      Call.micUI(false);
+      // 麥克風是自己收掉的，不是使用者按的，講一聲免得對著沒開的麥克風說話
+      if (Call.active) toast(t('mic_auto_off'));
     };
 
     try {

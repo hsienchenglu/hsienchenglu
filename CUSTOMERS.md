@@ -135,7 +135,13 @@ Cara pasang (5 menit):
    • Android: menu titik tiga → "Tambahkan ke layar utama"
 
 Selesai. Nanti saya yang menelepon. Tekan tombol hijau untuk menjawab.
-Bicara satu kalimat, lalu berhenti sebentar dan tunggu terjemahannya.
+
+Cara bicara saat panggilan:
+- Tekan tombol mikrofon 🎙 satu kali untuk mulai bicara
+- Bicara satu kalimat, lalu berhenti sebentar dan tunggu terjemahannya
+- Setelah selesai, tekan tombol mikrofon sekali lagi
+- Kalau tombolnya berubah jadi 🔇, artinya mikrofon tertutup —
+  tekan sekali lagi untuk bicara
 ```
 
 ---
@@ -144,8 +150,22 @@ Bicara satu kalimat, lalu berhenti sebentar dan tunggu terjemahannya.
 
 1. 你在撥號欄打客戶代號 → 按**撥號**
 2. 對方接聽後，兩邊都會看到逐字稿
-3. **一句一句講，講完停一秒**，等翻譯出來再講下一句
-4. 講完掛斷，這通的逐字稿會留在通話紀錄裡
+3. **按一下麥克風 🎙 開始說話，說完再按一下**（見下面說明）
+4. **一句一句講，講完停一秒**，等翻譯出來再講下一句
+5. 講完掛斷，這通的逐字稿會留在通話紀錄裡
+
+### 麥克風是「按一下開始、再按一下結束」
+
+接通時麥克風會自動打開一次。之後：
+
+- 按鈕是 **🎙**（綠色）＝正在聽，可以講
+- 按鈕是 **🔇** ＝已關閉，按一下才會開始聽
+- 停下來一段時間沒講話，它會自己收起來，畫面會跳「麥克風已收起」，
+  要繼續講就再按一下
+
+**為什麼要這樣設計**：Android 手機每啟動一次語音辨識就會「叮」一聲，
+那是系統發的，網頁關不掉。原本講完一句就自動重開，整通電話一直在叮。
+改成由你控制之後，只有真正要開口的那一下才會響。
 
 ### 講價格和數量的訣竅
 
