@@ -108,7 +108,13 @@ h2 { font-size: 16px; margin: 0; }
   margin-top: 16px;
 }
 .card-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-.card.standby { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* 窄螢幕或長字串（例如印尼文）時，按鈕自動換到下一行，不要把文字擠扁 */
+.card.standby {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.card.standby > div { flex: 1 1 180px; min-width: 0; }
+.card.standby .btn { flex: 0 0 auto; }
 .card.incoming { border-color: var(--accent); }
 .card.incoming .row { margin-top: 12px; }
 
@@ -258,3 +264,22 @@ code {
   background: var(--surface-high); padding: 1px 5px;
   border-radius: 5px; font-size: 12px;
 }
+
+/* 介面語言切換鍵：和右上角的齒輪對稱，放在標題列左上角 */
+.lang-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--outline);
+  background: var(--surface-high);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.lang-btn:active { transform: scale(0.94); }

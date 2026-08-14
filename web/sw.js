@@ -9,6 +9,29 @@
 const CONFIG_CACHE = 'zhid-config';
 const CONFIG_KEY = '/__zhid_config';
 
+/** 通知也要看得懂——語言跟著網頁的介面語言走。 */
+const TEXT = {
+  zh: {
+    app: '譯通',
+    title: '翻譯通話來電',
+    body: '{0} 撥給你，點一下接聽',
+    generic: '有來電，請開啟譯通查看',
+    ended: '來電已結束',
+  },
+  id: {
+    app: 'ZhID Talk',
+    title: 'Panggilan terjemahan masuk',
+    body: '{0} menelepon Anda, ketuk untuk menjawab',
+    generic: 'Ada panggilan masuk, buka aplikasi',
+    ended: 'Panggilan sudah berakhir',
+  },
+};
+
+const txt = (cfg, key, arg) => {
+  const dict = TEXT[(cfg && cfg.uiLang) === 'id' ? 'id' : 'zh'];
+  return arg == null ? dict[key] : dict[key].replace('{0}', arg);
+};
+
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (event) => {
@@ -45,8 +68,8 @@ self.addEventListener('push', (event) => {
 async function handlePush() {
   const cfg = await readConfig();
   if (!cfg || !cfg.dbUrl || !cfg.account) {
-    return self.registration.showNotification('譯通', {
-      body: '有來電，請開啟譯通查看',
+    return self.registration.showNotification(txt(cfg, 'app'), {
+      body: txt(cfg, 'generic'),
       icon: 'icons/icon-192.png',
       tag: 'zhid-call',
     });
@@ -61,16 +84,16 @@ async function handlePush() {
   }
 
   if (!incoming || !incoming.from) {
-    return self.registration.showNotification('譯通', {
-      body: '來電已結束',
+    return self.registration.showNotification(txt(cfg, 'app'), {
+      body: txt(cfg, 'ended'),
       icon: 'icons/icon-192.png',
       tag: 'zhid-call',
       silent: true,
     });
   }
 
-  return self.registration.showNotification('翻譯通話來電', {
-    body: `${incoming.from} 撥給你，點一下接聽`,
+  return self.registration.showNotification(txt(cfg, 'title'), {
+    body: txt(cfg, 'body', incoming.from),
     icon: 'icons/icon-192.png',
     badge: 'icons/icon-192.png',
     tag: 'zhid-call',

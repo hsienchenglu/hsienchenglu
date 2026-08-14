@@ -12,13 +12,14 @@
 // ───────────────────────────── 設定
 
 const LANGS = {
-  zh: { api: 'zh-TW', stt: 'zh-TW', tts: 'zh-TW', label: '中文' },
-  id: { api: 'id', stt: 'id-ID', tts: 'id-ID', label: '印尼文' },
+  zh: { api: 'zh-TW', stt: 'zh-TW', tts: 'zh-TW', key: 'lang_zh' },
+  id: { api: 'id', stt: 'id-ID', tts: 'id-ID', key: 'lang_id' },
 };
+const langLabel = (l) => t(LANGS[l].key);
 const otherLang = (l) => (l === 'zh' ? 'id' : 'zh');
 
 const DEFAULTS = {
-  account: '', peer: '', lang: 'zh',
+  account: '', peer: '', lang: 'zh', uiLang: '',
   dbUrl: '', dbSecret: '',
   provider: 'google', apiKey: '',
   ring: 2, autoListen: true, autoSpeak: true,
@@ -57,11 +58,11 @@ const el = (tag, cls, text) => {
 
 let toastTimer = null;
 function toast(msg) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  const box = $('toast');
+  box.textContent = msg;
+  box.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  toastTimer = setTimeout(() => box.classList.remove('show'), 2600);
 }
 
 function showScreen(id) {
@@ -77,9 +78,9 @@ const fmtDuration = (sec) => {
 function fmtTime(ts) {
   const d = new Date(ts), now = new Date();
   const time = d.toTimeString().slice(0, 5);
-  if (d.toDateString() === now.toDateString()) return '今天 ' + time;
+  if (d.toDateString() === now.toDateString()) return t('today') + ' ' + time;
   const yest = new Date(now.getTime() - 86400000);
-  if (d.toDateString() === yest.toDateString()) return '昨天 ' + time;
+  if (d.toDateString() === yest.toDateString()) return t('yesterday') + ' ' + time;
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`;
 }
 
@@ -165,9 +166,7 @@ async function translate(text, from, to) {
       throw new Error(j.error || '翻譯失敗 HTTP ' + r.status);
     }
   } catch (e) {
-    if (!prefs.apiKey) {
-      throw new Error(e.message + '（也沒有設定備援金鑰）');
-    }
+    if (!prefs.apiKey) throw e;
   }
 
   if (!prefs.apiKey) throw new Error('尚未設定翻譯金鑰');
@@ -356,6 +355,7 @@ const Push = {
         account: sanitize(prefs.account),
         dbUrl: prefs.dbUrl,
         dbSecret: prefs.dbSecret,
+        uiLang: UI_LANG,
       });
       await cache.put(
         '/__zhid_config',
@@ -369,33 +369,33 @@ const Push = {
   /** 建立訂閱並寫進 Firebase，讓對方撥號時能叫醒我。 */
   async enable() {
     if (!this.supported()) {
-      return { ok: false, reason: '這個瀏覽器不支援背景推播' };
+      return { ok: false, reason: t('err_no_push') };
     }
     if (this.needsInstallOnIos()) {
-      return { ok: false, reason: 'iPhone 請先用分享選單「加入主畫面」，再從主畫面開啟' };
+      return { ok: false, reason: t('err_ios_install') };
     }
 
     const permission = await requestNotificationPermission();
     if (permission !== 'granted') {
-      return { ok: false, reason: '沒有通知權限，背景時收不到來電' };
+      return { ok: false, reason: t('err_no_notify_perm') };
     }
 
     if (!this.reg) await this.register();
-    if (!this.reg) return { ok: false, reason: 'Service Worker 註冊失敗' };
+    if (!this.reg) return { ok: false, reason: t('err_sw_failed') };
     await this.saveConfig();
 
     let serverKey;
     try {
       const r = await fetch('/api/push-key');
       if (r.status === 404 || r.status === 501) {
-        return { ok: false, reason: '伺服器尚未設定推播金鑰（VAPID）' };
+        return { ok: false, reason: t('err_no_vapid') };
       }
-      if (!r.ok) return { ok: false, reason: '取得推播金鑰失敗 HTTP ' + r.status };
+      if (!r.ok) return { ok: false, reason: t('err_push_key', 'HTTP ' + r.status) };
       serverKey = (await r.json()).key;
     } catch (e) {
-      return { ok: false, reason: '取得推播金鑰失敗：' + e.message };
+      return { ok: false, reason: t('err_push_key', e.message) };
     }
-    if (!serverKey) return { ok: false, reason: '伺服器沒有回傳推播金鑰' };
+    if (!serverKey) return { ok: false, reason: t('err_no_vapid') };
 
     let sub;
     try {
@@ -416,14 +416,14 @@ const Push = {
           applicationServerKey: b64ToBytes(serverKey),
         });
       } catch (e2) {
-        return { ok: false, reason: '建立推播訂閱失敗：' + e2.message };
+        return { ok: false, reason: t('err_push_sub', e2.message) };
       }
     }
 
     try {
       await fbPut(`users/${sanitize(prefs.account)}/push`, JSON.parse(JSON.stringify(sub)));
     } catch (e) {
-      return { ok: false, reason: '推播訂閱寫入資料庫失敗：' + e.message };
+      return { ok: false, reason: t('err_push_save', e.message) };
     }
 
     this.enabled = true;
@@ -523,7 +523,7 @@ const Speech = {
 
   start() {
     if (!SR) {
-      toast('這個瀏覽器不支援語音辨識，請改用 Chrome 或 Edge');
+      toast(t('err_no_stt'));
       return;
     }
     this.want = true;
@@ -563,9 +563,9 @@ const Speech = {
     rec.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         this.want = false;
-        toast('需要麥克風權限才能說話');
+        toast(t('err_mic_permission'));
       } else if (e.error === 'network') {
-        toast('語音辨識連線不穩');
+        toast(t('err_stt_network'));
       }
       // no-speech / aborted 屬正常情況，交給 onend 重啟
     };
@@ -585,7 +585,7 @@ const Speech = {
         this.want = false;
         this.rapidFails = 0;
         Call.micUI(false);
-        toast('語音辨識一直中斷，已暫停。點一下麥克風可重新開始');
+        toast(t('err_stt_stopped'));
         return;
       }
 
@@ -606,7 +606,7 @@ const Speech = {
         this.want = false;
         this.rapidFails = 0;
         Call.micUI(false);
-        toast('無法啟動語音辨識，點一下麥克風可重試');
+        toast(t('err_stt_start'));
       } else {
         setTimeout(() => this.begin(), 800);
       }
@@ -642,7 +642,7 @@ const Speech = {
     u.rate = 0.95;
     const v = this.pickVoice(LANGS[lang].tts);
     if (v) u.voice = v;
-    else toast(`系統缺少${LANGS[lang].label}的語音，聲音可能不正確`);
+    else toast(t('err_tts_voice', langLabel(lang)));
 
     const done = () => {
       if (speechSynthesis.speaking || speechSynthesis.pending) return;
@@ -784,10 +784,13 @@ const History = {
 
       const info = el('div', 'info');
       info.appendChild(el('div', 'name', r.peer));
-      const meta = missed ? '未接來電'
-        : !r.answered ? '對方未接聽'
-        : `通話 ${fmtDuration(r.durationSec)}`;
-      info.appendChild(el('div', 'meta', r.msgCount ? `${meta} · ${r.msgCount} 句` : meta));
+      const meta = missed ? t('call_missed')
+        : !r.answered ? t('call_no_answer')
+        : t('duration_fmt', fmtDuration(r.durationSec));
+      info.appendChild(el(
+        'div', 'meta',
+        r.msgCount ? `${meta} · ${t('sentence_count', r.msgCount)}` : meta
+      ));
       info.appendChild(el('div', 'time', fmtTime(r.startTs)));
       info.onclick = () => Detail.open(r);
       li.appendChild(info);
@@ -796,7 +799,7 @@ const History = {
       del.title = '刪除';
       del.onclick = (e) => {
         e.stopPropagation();
-        if (confirm(`刪除與 ${r.peer} 的通話紀錄與逐字稿？`)) {
+        if (confirm(t('delete_record_q', r.peer))) {
           this.remove(r.callId);
           this.render();
         }
@@ -814,7 +817,7 @@ const Detail = {
 
   open(record) {
     this.current = record;
-    $('detailTitle').textContent = record.peer;
+    $('detailTitle').textContent = record.peer || t('history_detail');
     const msgs = History.transcript(record.callId);
     renderTranscript($('detailTranscript'), msgs);
     $('detailEmpty').classList.toggle('hidden', msgs.length > 0);
@@ -854,19 +857,19 @@ const Standby = {
       this.stream = fbStream(
         `users/${account}/incoming`,
         (path, data) => this.onEvent(path, data),
-        () => $('standbyState').textContent = '連線中斷，重新連線中…'
+        () => { $('standbyState').textContent = t('standby_reconnecting'); }
       );
     } catch (e) {
       toast(e.message);
       return;
     }
-    $('standbyState').textContent = `已上線：${prefs.account}`;
+    $('standbyState').textContent = t('standby_online', prefs.account);
   },
 
   stop() {
     if (this.stream) { this.stream.close(); this.stream = null; }
     this.account = '';
-    $('standbyState').textContent = '尚未上線，接不到來電';
+    $('standbyState').textContent = t('standby_offline');
   },
 
   onEvent(path, data) {
@@ -906,7 +909,7 @@ const Standby = {
     $('incomingPeer').textContent = p.from;
     $('incomingCard').classList.remove('hidden');
     $('incomingPeerBig').textContent = p.from;
-    $('incomingLang').textContent = `對方說 ${LANGS[p.fromLang].label}`;
+    $('incomingLang').textContent = t('speaks', langLabel(p.fromLang));
     showScreen('screenIncoming');
     Ringer.start(prefs.ring);
     notifyIncoming(p.from);
@@ -966,7 +969,7 @@ function notifyIncoming(peer) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   if (!document.hidden) return;
   try {
-    liveNotification = new Notification('翻譯通話來電', { body: peer, tag: 'zhid-call', requireInteraction: true });
+    liveNotification = new Notification(t('incoming_call'), { body: peer, tag: 'zhid-call', requireInteraction: true });
     liveNotification.onclick = () => { window.focus(); liveNotification.close(); };
   } catch (e) { /* 部分瀏覽器不支援建構式 */ }
 }
@@ -1007,8 +1010,8 @@ const Call = {
     this.seen = new Set();
 
     $('callPeer').textContent = peer;
-    $('callLangPair').textContent = `${LANGS[prefs.lang].label} → ${LANGS[this.target].label}`;
-    $('callStatus').textContent = accepted ? '通話中' : '撥號中…';
+    $('callLangPair').textContent = t('lang_pair', langLabel(prefs.lang), langLabel(this.target));
+    $('callStatus').textContent = accepted ? t('status_connected') : t('status_calling');
     $('callDuration').textContent = '';
     $('transcript').innerHTML = '';
     $('transcriptEmpty').classList.remove('hidden');
@@ -1049,7 +1052,7 @@ const Call = {
         ts: this.startTs,
       });
     } catch (e) {
-      toast('撥號失敗：' + e.message);
+      toast(t('err_dial', e.message));
       this.end(false);
       return;
     }
@@ -1059,7 +1062,7 @@ const Call = {
 
     this.ringTimeout = setTimeout(() => {
       if (!this.connected && !this.ending) {
-        toast('對方未接聽');
+        toast(t('call_no_answer'));
         this.end(true);
       }
     }, 45000);
@@ -1069,8 +1072,8 @@ const Call = {
     this.stateStream = fbStream(`calls/${this.callId}/state`, (path, data) => {
       if (this.ending) return;
       if (data === 'accepted') this.onConnected();
-      else if (data === 'rejected') { toast('對方拒接'); this.end(false); }
-      else if (data === 'ended') { toast('對方已掛斷'); this.end(false); }
+      else if (data === 'rejected') { toast(t('call_rejected')); this.end(false); }
+      else if (data === 'ended') { toast(t('call_peer_hung_up')); this.end(false); }
     });
   },
 
@@ -1108,19 +1111,19 @@ const Call = {
     this.connected = true;
     this.connectedAt = Date.now();
     clearTimeout(this.ringTimeout);
-    $('callStatus').textContent = '通話中';
+    $('callStatus').textContent = t('status_connected');
     if (prefs.autoListen) Speech.start();
   },
 
   async sendUtterance(text) {
     if (!text || this.ending) return;
-    $('callStatus').textContent = '翻譯中…';
+    $('callStatus').textContent = t('status_translating');
     let dst;
     try {
       dst = await translate(text, prefs.lang, this.target);
     } catch (e) {
       toast(e.message);
-      $('callStatus').textContent = '通話中';
+      $('callStatus').textContent = t('status_connected');
       return;
     }
 
@@ -1134,14 +1137,14 @@ const Call = {
         src: text, dst, ts,
       });
     } catch (e) {
-      toast('訊息送出失敗：' + e.message);
-      $('callStatus').textContent = '通話中';
+      toast(t('err_send', e.message));
+      $('callStatus').textContent = t('status_connected');
       return;
     }
 
     if (key) this.seen.add(key);
     this.append({ id: key || 'local_' + ts, fromMe: true, src: text, dst, ts });
-    $('callStatus').textContent = '通話中';
+    $('callStatus').textContent = t('status_connected');
   },
 
   append(msg) {
@@ -1163,9 +1166,7 @@ const Call = {
     const b = $('btnMic');
     b.classList.toggle('off', !on);
     b.textContent = on ? '🎙' : '🔇';
-    $('micHint').textContent = on
-      ? '請說話，停頓一下就會自動送出'
-      : '麥克風已關閉，點一下開始說話';
+    $('micHint').textContent = on ? t('mic_on_hint') : t('mic_off_hint');
     Wave.setActive(on);
   },
 
@@ -1226,19 +1227,20 @@ function fillSettings() {
   $('setDbSecret').value = prefs.dbSecret;
   $('setApiKey').value = prefs.apiKey;
   $('setRing').value = prefs.ring;
-  $('ringLabel').textContent = `連續響 ${prefs.ring} 次`;
+  $('ringLabel').textContent = t('ring_times', prefs.ring);
   $('setAutoListen').checked = prefs.autoListen;
   $('setAutoSpeak').checked = prefs.autoSpeak;
   document.querySelector(`input[name="lang"][value="${prefs.lang}"]`).checked = true;
   document.querySelector(`input[name="provider"][value="${prefs.provider}"]`).checked = true;
+  document.querySelector(`input[name="uilang"][value="${UI_LANG}"]`).checked = true;
   $('testResult').textContent = '';
 }
 
 function readSettings() {
   const account = $('setAccount').value.trim();
-  if (!account) { toast('請填寫你的帳號'); return false; }
+  if (!account) { toast(t('err_account_required')); return false; }
   const dbUrl = $('setDbUrl').value.trim().replace(/\/+$/, '');
-  if (dbUrl && !dbUrl.startsWith('https://')) { toast('網址必須以 https:// 開頭'); return false; }
+  if (dbUrl && !dbUrl.startsWith('https://')) { toast(t('err_db_url')); return false; }
 
   prefs.account = account;
   prefs.peer = $('setPeer').value.trim();
@@ -1250,14 +1252,39 @@ function readSettings() {
   prefs.ring = parseInt($('setRing').value, 10) || 2;
   prefs.autoListen = $('setAutoListen').checked;
   prefs.autoSpeak = $('setAutoSpeak').checked;
+  prefs.uiLang = document.querySelector('input[name="uilang"]:checked').value;
   savePrefs();
-  refreshHeader();
+  applyUiLang(prefs.uiLang);
   return true;
 }
 
+/**
+ * 切換介面語言。除了 data-i18n 的靜態文字，
+ * 動態產生的部分（標頭、通話紀錄、狀態列）也要一起重畫。
+ */
+function applyUiLang(lang) {
+  setUiLang(lang || prefs.lang || 'zh');
+  applyI18n();
+  $('btnUiLang').textContent = UI_LANG === 'zh' ? 'ID' : '中';
+
+  refreshHeader();
+  History.render();
+  $('ringLabel').textContent = t('ring_times', prefs.ring);
+  $('standbyState').textContent = Standby.stream
+    ? t('standby_online', prefs.account)
+    : t('standby_offline');
+  Call.micUI(Speech.want);
+
+  if (Call.active) {
+    $('callLangPair').textContent = t('lang_pair', langLabel(prefs.lang), langLabel(Call.target));
+    $('callStatus').textContent = Call.connected ? t('status_connected') : t('status_calling');
+  }
+  Push.saveConfig(); // Service Worker 的通知也要跟著換語言
+}
+
 function refreshHeader() {
-  $('myAccountLabel').textContent = prefs.account ? `我的帳號：${prefs.account}` : '尚未設定帳號';
-  $('myLangLabel').textContent = `${LANGS[prefs.lang].label} → ${LANGS[otherLang(prefs.lang)].label}`;
+  $('myAccountLabel').textContent = prefs.account ? t('my_account', prefs.account) : t('no_account');
+  $('myLangLabel').textContent = t('lang_pair', langLabel(prefs.lang), langLabel(otherLang(prefs.lang)));
   $('setupHint').classList.toggle('hidden', isConfigured());
   if (prefs.peer && !$('inputPeer').value) $('inputPeer').value = prefs.peer;
 }
@@ -1266,19 +1293,19 @@ async function testConnection() {
   if (!readSettings()) return;
   const out = $('testResult');
   $('btnTest').disabled = true;
-  out.textContent = '測試中…';
+  out.textContent = t('testing');
   try {
     await fbPut('healthcheck/' + (sanitize(prefs.account) || 'anon'), Date.now());
   } catch (e) {
-    out.textContent = '資料庫連線失敗：' + e.message;
+    out.textContent = t('test_db_fail', e.message);
     $('btnTest').disabled = false;
     return;
   }
   try {
     const sample = await translate('你好', 'zh', 'id');
-    out.textContent = `連線正常，翻譯測試：你好 → ${sample}`;
+    out.textContent = t('test_ok', sample);
   } catch (e) {
-    out.textContent = '資料庫正常，但翻譯失敗：' + e.message;
+    out.textContent = t('test_tr_fail', e.message);
   }
   $('btnTest').disabled = false;
 }
@@ -1290,18 +1317,26 @@ function wire() {
   $('btnSettingsBack').onclick = () => { showScreen('screenMain'); };
   $('btnSave').onclick = () => {
     if (!readSettings()) return;
-    toast('已儲存');
+    toast(t('saved'));
     Standby.stop();
     Standby.start();
     Push.saveConfig(); // 帳號或資料庫換了，背景通知也要跟著更新
     showScreen('screenMain');
   };
+  $('btnUiLang').onclick = () => {
+    const next = UI_LANG === 'zh' ? 'id' : 'zh';
+    prefs.uiLang = next;
+    savePrefs();
+    applyUiLang(next);
+    toast(t('ui_lang_switched'));
+  };
+
   $('btnTest').onclick = testConnection;
 
   // 網頁如果在通話中被系統關掉，Firebase 裡會留下沒清乾淨的來電節點，
   // 之後就會一直跳出假來電或撥不出去。這顆按鈕是給使用者的自救出口。
   $('btnReset').onclick = async () => {
-    if (!isConfigured()) { toast('請先完成設定'); return; }
+    if (!isConfigured()) { toast(t('err_finish_setup')); return; }
     const btn = $('btnReset');
     btn.disabled = true;
     try {
@@ -1310,44 +1345,44 @@ function wire() {
       Standby.hideIncoming();
       Standby.stop();
       Standby.start();
-      toast('已清除，可以重新撥號了');
+      toast(t('reset_done'));
     } catch (e) {
-      toast('清除失敗：' + e.message);
+      toast(t('reset_fail', e.message));
     }
     btn.disabled = false;
   };
-  $('setRing').oninput = (e) => { $('ringLabel').textContent = `連續響 ${e.target.value} 次`; };
+  $('setRing').oninput = (e) => { $('ringLabel').textContent = t('ring_times', e.target.value); };
   $('btnTestRing').onclick = () => Ringer.start(parseInt($('setRing').value, 10) || 2);
 
   $('btnStandby').onclick = async () => {
-    if (!isConfigured()) { toast('請先到設定填入帳號與資料庫網址'); return; }
+    if (!isConfigured()) { toast(t('err_setup_first')); return; }
     Ringer.prime(); // 借這次點擊解鎖音訊播放，之後才響得出鈴聲
     Standby.start();
 
     const btn = $('btnStandby');
     btn.disabled = true;
-    btn.textContent = '啟用中…';
+    btn.textContent = t('enabling');
     const result = await Push.enable();
     btn.disabled = false;
 
     if (result.ok) {
-      btn.textContent = '已啟用';
-      $('standbyPush').textContent = '鈴聲與背景通知都已啟用';
+      btn.textContent = t('enabled');
+      $('standbyPush').textContent = t('alerts_all_on');
       $('standbyPush').className = 'sub accent';
-      toast('已啟用鈴聲與背景通知');
+      toast(t('alerts_on'));
     } else {
-      btn.textContent = '重新啟用';
-      $('standbyPush').textContent = '鈴聲已啟用；背景通知未啟用：' + result.reason;
+      btn.textContent = t('enable_again');
+      $('standbyPush').textContent = t('alerts_ring_only', result.reason);
       $('standbyPush').className = 'sub';
       toast(result.reason);
     }
   };
 
   $('btnCall').onclick = () => {
-    if (!isConfigured()) { toast('請先到設定填入帳號與資料庫網址'); return; }
+    if (!isConfigured()) { toast(t('err_setup_first')); return; }
     const peer = $('inputPeer').value.trim();
-    if (!peer) { toast('請輸入對方帳號'); return; }
-    if (sanitize(peer) === sanitize(prefs.account)) { toast('不能撥給自己'); return; }
+    if (!peer) { toast(t('err_need_peer')); return; }
+    if (sanitize(peer) === sanitize(prefs.account)) { toast(t('err_call_self')); return; }
     prefs.peer = peer;
     savePrefs();
     Ringer.prime();
@@ -1364,24 +1399,24 @@ function wire() {
   $('btnRejectBig').onclick = () => Standby.reject(true);
 
   $('btnMic').onclick = () => Speech.toggle();
-  $('btnEnd').onclick = () => { if (confirm('要結束通話嗎？')) Call.end(true); };
+  $('btnEnd').onclick = () => { if (confirm(t('end_call_q'))) Call.end(true); };
   $('btnSpeaker').onclick = () => {
     prefs.autoSpeak = !prefs.autoSpeak;
     savePrefs();
     Call.speakerUI();
     if (!prefs.autoSpeak) Speech.stopSpeaking();
-    toast(prefs.autoSpeak ? '已開啟自動朗讀' : '已關閉自動朗讀');
+    toast(prefs.autoSpeak ? t('speak_on') : t('speak_off'));
   };
 
   $('btnClearHistory').onclick = () => {
-    if (confirm('刪除全部通話紀錄與逐字稿？此動作無法復原。')) {
+    if (confirm(t('clear_all_q'))) {
       History.clear();
       History.render();
     }
   };
   $('btnDetailBack').onclick = () => showScreen('screenMain');
   $('btnDeleteRecord').onclick = () => {
-    if (Detail.current && confirm('刪除這筆通話紀錄？')) {
+    if (Detail.current && confirm(t('delete_this_q'))) {
       History.remove(Detail.current.callId);
       History.render();
       showScreen('screenMain');
@@ -1426,9 +1461,10 @@ function wire() {
 
 function init() {
   wire();
+  // 沒特別指定的話，介面語言跟著「我說的語言」走——
+  // 印尼看護把語言設成印尼文，介面就自然是印尼文
+  applyUiLang(prefs.uiLang || prefs.lang);
   Speech.loadVoices();
-  refreshHeader();
-  History.render();
   Wave.init();
   Push.register();
 
@@ -1442,7 +1478,7 @@ function init() {
   if (!isConfigured()) {
     showScreen('screenSettings');
     fillSettings();
-    toast('請先完成設定');
+    toast(t('err_finish_setup'));
     return;
   }
 
@@ -1451,12 +1487,12 @@ function init() {
   Standby.start();
 
   if (!Speech.supported()) {
-    toast('這個瀏覽器不支援語音辨識，請改用 Chrome 或 Edge');
+    toast(t('err_no_stt'));
   }
   if (Push.supported() && Notification.permission === 'granted') {
-    $('standbyPush').textContent = '已允許通知，建議按一次按鈕確認推播訂閱';
+    $('standbyPush').textContent = t('alerts_notify_granted');
   } else if (Push.needsInstallOnIos()) {
-    $('standbyPush').textContent = 'iPhone 請用分享選單「加入主畫面」，才能在背景收到來電';
+    $('standbyPush').textContent = t('alerts_ios_install');
   }
 }
 

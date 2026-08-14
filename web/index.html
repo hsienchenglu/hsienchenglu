@@ -18,52 +18,55 @@
 <!-- ───────────────── 主畫面 ───────────────── -->
 <section id="screenMain" class="screen active">
   <header class="topbar topbar-main">
+    <!-- 介面語言切換：顯示的是「切過去會變成的語言」 -->
+    <button id="btnUiLang" class="lang-btn" data-i18n-title="settings_ui_lang">ID</button>
+
     <div class="brand">
-      <h1>譯通</h1>
+      <h1 data-i18n="app_name">譯通</h1>
       <!-- 找不到 logo.png 時自動隱藏，不會留下破圖 -->
       <img id="brandLogo" class="brand-logo" src="logo.png" alt="AICOM"
            onerror="this.remove()">
     </div>
-    <div id="myAccountLabel" class="sub">尚未設定帳號</div>
+    <div id="myAccountLabel" class="sub"></div>
     <div id="myLangLabel" class="sub accent"></div>
-    <button id="btnSettings" class="icon-btn" title="設定" aria-label="設定">⚙</button>
+    <button id="btnSettings" class="icon-btn" data-i18n-title="settings">⚙</button>
   </header>
 
   <!-- 待機：連線會自動建立，但鈴聲與通知需要使用者點一下才能授權 -->
   <div id="standbyCard" class="card standby">
     <div>
-      <div class="card-title">待機狀態</div>
-      <div id="standbyState" class="sub">尚未上線，接不到來電</div>
+      <div class="card-title" data-i18n="standby_title">待機狀態</div>
+      <div id="standbyState" class="sub"></div>
       <div id="standbyPush" class="sub"></div>
     </div>
-    <button id="btnStandby" class="btn primary small">啟用鈴聲與通知</button>
+    <button id="btnStandby" class="btn primary small" data-i18n="enable_alerts">啟用鈴聲與通知</button>
   </div>
 
   <!-- 來電卡片 -->
   <div id="incomingCard" class="card incoming hidden">
-    <div class="label accent">翻譯通話來電</div>
+    <div class="label accent" data-i18n="incoming_call">翻譯通話來電</div>
     <div id="incomingPeer" class="big"></div>
     <div class="row gap">
-      <button id="btnReject" class="btn danger-outline grow">拒接</button>
-      <button id="btnAccept" class="btn primary grow">接聽</button>
+      <button id="btnReject" class="btn danger-outline grow" data-i18n="reject">拒接</button>
+      <button id="btnAccept" class="btn primary grow" data-i18n="accept">接聽</button>
     </div>
   </div>
 
   <!-- 撥號 -->
   <div class="card">
-    <div class="card-title">撥打翻譯通話</div>
-    <input id="inputPeer" class="input" type="text" placeholder="對方帳號" autocomplete="off">
-    <button id="btnCall" class="btn primary block">📞 撥號</button>
-    <div id="setupHint" class="hint warn hidden">請先到設定填入帳號、資料庫網址</div>
+    <div class="card-title" data-i18n="dial_title">撥打翻譯通話</div>
+    <input id="inputPeer" class="input" type="text" data-i18n-ph="peer_hint" autocomplete="off">
+    <button id="btnCall" class="btn primary block">📞 <span data-i18n="call_button">撥號</span></button>
+    <div id="setupHint" class="hint warn hidden" data-i18n="setup_hint"></div>
   </div>
 
   <!-- 通話紀錄 -->
   <div class="row between mt">
-    <h2>通話紀錄</h2>
-    <button id="btnClearHistory" class="btn text danger hidden">全部刪除</button>
+    <h2 data-i18n="history_title">通話紀錄</h2>
+    <button id="btnClearHistory" class="btn text danger hidden" data-i18n="clear_all">全部刪除</button>
   </div>
   <ul id="historyList" class="history"></ul>
-  <div id="noHistory" class="hint center">還沒有通話紀錄</div>
+  <div id="noHistory" class="hint center" data-i18n="no_history"></div>
 </section>
 
 <!-- ───────────────── 通話畫面 ───────────────── -->
@@ -71,38 +74,38 @@
   <div class="call-head">
     <div id="callPeer" class="big"></div>
     <div id="callLangPair" class="sub accent"></div>
-    <div id="callStatus" class="sub">撥號中…</div>
+    <div id="callStatus" class="sub"></div>
     <div id="callDuration" class="sub"></div>
   </div>
 
   <ul id="transcript" class="transcript"></ul>
-  <div id="transcriptEmpty" class="hint center">這通電話還沒有對話內容</div>
+  <div id="transcriptEmpty" class="hint center" data-i18n="no_transcript"></div>
 
   <div id="partial" class="partial hidden"></div>
   <canvas id="wave" class="wave" height="56"></canvas>
-  <div id="micHint" class="hint center">麥克風已關閉，點一下開始說話</div>
+  <div id="micHint" class="hint center"></div>
 
   <div class="controls">
-    <button id="btnSpeaker" class="fab mini" title="朗讀開關" aria-label="朗讀開關">🔊</button>
-    <button id="btnMic" class="fab large" title="麥克風" aria-label="麥克風">🎙</button>
-    <button id="btnEnd" class="fab danger" title="掛斷" aria-label="掛斷">📵</button>
+    <button id="btnSpeaker" class="fab mini" data-i18n-title="auto_speak">🔊</button>
+    <button id="btnMic" class="fab large" data-i18n-title="mic_off_hint">🎙</button>
+    <button id="btnEnd" class="fab danger" data-i18n-title="end_call_q">📵</button>
   </div>
 </section>
 
 <!-- ───────────────── 全螢幕來電 ───────────────── -->
 <section id="screenIncoming" class="screen incoming-screen">
-  <div class="label accent">翻譯通話來電</div>
+  <div class="label accent" data-i18n="incoming_call">翻譯通話來電</div>
   <div class="avatar">📞</div>
   <div id="incomingPeerBig" class="huge"></div>
   <div id="incomingLang" class="sub"></div>
   <div class="controls wide">
     <div class="stack">
-      <button id="btnRejectBig" class="fab danger big" aria-label="拒接">📵</button>
-      <span class="sub">拒接</span>
+      <button id="btnRejectBig" class="fab danger big" data-i18n-title="reject">📵</button>
+      <span class="sub" data-i18n="reject">拒接</span>
     </div>
     <div class="stack">
-      <button id="btnAcceptBig" class="fab primary big" aria-label="接聽">📞</button>
-      <span class="sub">接聽</span>
+      <button id="btnAcceptBig" class="fab primary big" data-i18n-title="accept">📞</button>
+      <span class="sub" data-i18n="accept">接聽</span>
     </div>
   </div>
 </section>
@@ -110,88 +113,93 @@
 <!-- ───────────────── 逐字稿 ───────────────── -->
 <section id="screenDetail" class="screen">
   <header class="topbar">
-    <button id="btnDetailBack" class="icon-btn" aria-label="返回">←</button>
-    <h1 id="detailTitle">通話逐字稿</h1>
+    <button id="btnDetailBack" class="icon-btn" data-i18n-title="back">←</button>
+    <h1 id="detailTitle"></h1>
     <span></span>
   </header>
   <ul id="detailTranscript" class="transcript"></ul>
-  <div id="detailEmpty" class="hint center hidden">這通電話沒有對話內容</div>
-  <button id="btnDeleteRecord" class="btn danger-outline block mt">🗑 刪除這筆紀錄</button>
+  <div id="detailEmpty" class="hint center hidden" data-i18n="no_transcript"></div>
+  <button id="btnDeleteRecord" class="btn danger-outline block mt">
+    🗑 <span data-i18n="delete_record">刪除這筆紀錄</span>
+  </button>
 </section>
 
 <!-- ───────────────── 設定 ───────────────── -->
 <section id="screenSettings" class="screen">
   <header class="topbar">
-    <button id="btnSettingsBack" class="icon-btn" aria-label="返回">←</button>
-    <h1>設定</h1>
+    <button id="btnSettingsBack" class="icon-btn" data-i18n-title="back">←</button>
+    <h1 data-i18n="settings">設定</h1>
     <span></span>
   </header>
 
   <div class="card">
-    <div class="card-title">帳號</div>
-    <div class="hint">你的帳號要告訴對方，對方才撥得進來。兩邊請填不同帳號。</div>
-    <input id="setAccount" class="input" type="text" placeholder="我的帳號" autocomplete="off">
-    <input id="setPeer" class="input" type="text" placeholder="常用對方帳號（可留空）" autocomplete="off">
-  </div>
-
-  <div class="card">
-    <div class="card-title">我說的語言</div>
-    <div class="hint">另一方會自動使用另一種語言。</div>
+    <div class="card-title" data-i18n="settings_ui_lang">介面語言</div>
+    <div class="hint" data-i18n="settings_ui_lang_desc"></div>
     <div class="row gap">
-      <label class="radio"><input type="radio" name="lang" value="zh"> 中文</label>
-      <label class="radio"><input type="radio" name="lang" value="id"> 印尼文</label>
+      <label class="radio"><input type="radio" name="uilang" value="zh"> 中文</label>
+      <label class="radio"><input type="radio" name="uilang" value="id"> Bahasa Indonesia</label>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">連線（Firebase Realtime Database）</div>
-    <div class="hint">兩邊填一樣的網址就能互相撥號，和 Android 版通用。</div>
-    <input id="setDbUrl" class="input" type="url" placeholder="https://xxx-default-rtdb.firebasedatabase.app">
-    <input id="setDbSecret" class="input" type="text" placeholder="資料庫密鑰（測試規則可留空）" autocomplete="off">
+    <div class="card-title" data-i18n="settings_account">帳號</div>
+    <div class="hint" data-i18n="settings_account_desc"></div>
+    <input id="setAccount" class="input" type="text" data-i18n-ph="my_account_hint" autocomplete="off">
+    <input id="setPeer" class="input" type="text" data-i18n-ph="peer_account_hint" autocomplete="off">
   </div>
 
   <div class="card">
-    <div class="card-title">翻譯服務</div>
-    <div class="hint">
-      建議把金鑰放在 Netlify 的環境變數（<code>TRANSLATE_API_KEY</code>），
-      網頁會自動走伺服器代理，金鑰不會外流。下面的欄位只在沒有代理時當備援用。
-    </div>
+    <div class="card-title" data-i18n="settings_lang">我說的語言</div>
+    <div class="hint" data-i18n="settings_lang_desc"></div>
     <div class="row gap">
-      <label class="radio"><input type="radio" name="provider" value="google"> Google 翻譯</label>
+      <label class="radio"><input type="radio" name="lang" value="zh"> <span data-i18n="lang_zh">中文</span></label>
+      <label class="radio"><input type="radio" name="lang" value="id"> <span data-i18n="lang_id">印尼文</span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="settings_db">連線</div>
+    <div class="hint" data-i18n="settings_db_desc"></div>
+    <input id="setDbUrl" class="input" type="url" data-i18n-ph="db_url_hint">
+    <input id="setDbSecret" class="input" type="text" data-i18n-ph="db_secret_hint" autocomplete="off">
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="settings_translate">翻譯服務</div>
+    <div class="hint" data-i18n="settings_translate_desc"></div>
+    <div class="row gap">
+      <label class="radio"><input type="radio" name="provider" value="google"> Google</label>
       <label class="radio"><input type="radio" name="provider" value="gemini"> Gemini</label>
       <label class="radio"><input type="radio" name="provider" value="openai"> OpenAI</label>
     </div>
-    <input id="setApiKey" class="input" type="password" placeholder="API 金鑰（備援，會存在這台裝置）" autocomplete="off">
+    <input id="setApiKey" class="input" type="password" data-i18n-ph="api_key_hint" autocomplete="off">
   </div>
 
   <div class="card">
-    <div class="card-title">來電鈴聲</div>
-    <div class="hint">網頁無法讀取手機內建鈴聲，改用內建的電話鈴聲音效，響完設定的次數就停。</div>
+    <div class="card-title" data-i18n="settings_ring">來電鈴聲</div>
+    <div class="hint" data-i18n="settings_ring_desc"></div>
     <div class="row between">
-      <span id="ringLabel" class="accent">連續響 2 次</span>
-      <button id="btnTestRing" class="btn text">試聽</button>
+      <span id="ringLabel" class="accent"></span>
+      <button id="btnTestRing" class="btn text" data-i18n="ring_test">試聽</button>
     </div>
     <input id="setRing" class="slider" type="range" min="1" max="5" step="1" value="2">
-    <label class="check"><input id="setAutoListen" type="checkbox"> 通話中自動聆聽</label>
-    <label class="check"><input id="setAutoSpeak" type="checkbox"> 自動朗讀對方的話</label>
+    <label class="check"><input id="setAutoListen" type="checkbox"> <span data-i18n="auto_listen">通話中自動聆聽</span></label>
+    <label class="check"><input id="setAutoSpeak" type="checkbox"> <span data-i18n="auto_speak">自動朗讀對方的話</span></label>
   </div>
 
-  <button id="btnTest" class="btn outline block">測試連線與翻譯</button>
+  <button id="btnTest" class="btn outline block" data-i18n="test_connection">測試連線與翻譯</button>
   <div id="testResult" class="hint"></div>
 
-  <button id="btnReset" class="btn outline block">清除殘留的通話狀態</button>
-  <div class="hint">
-    如果撥不出去、或一直跳出根本沒人在撥的來電，按這個把卡住的狀態清掉。
-    不會影響設定與通話紀錄。
-  </div>
-  <button id="btnSave" class="btn primary block mt">儲存</button>
-  <div class="hint center mb">
-    語音辨識需要 Chrome／Edge，且網站必須是 HTTPS。
-  </div>
+  <button id="btnReset" class="btn outline block" data-i18n="reset_state">清除殘留的通話狀態</button>
+  <div class="hint" data-i18n="reset_state_desc"></div>
+
+  <button id="btnSave" class="btn primary block mt" data-i18n="save">儲存</button>
+  <div class="hint center mb" data-i18n="browser_note"></div>
 </section>
 
 <div id="toast" class="toast"></div>
 
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
