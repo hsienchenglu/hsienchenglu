@@ -258,21 +258,50 @@ const Ringer = {
   ctx: null,
   timers: [],
   nodes: [],
+  idleTimer: 0,
 
-  /** 瀏覽器要有使用者互動才允許出聲，所以上線時先把 AudioContext 準備好。 */
+  /**
+   * 瀏覽器要有使用者互動才允許出聲，所以上線時先把 AudioContext 準備好。
+   * 但準備好之後要馬上讓它休眠——AudioContext 只要維持 running，
+   * 手機的喇叭線路就一直開著，Android 上聽起來就是通話全程有一層持續的底噪。
+   */
   prime() {
+    const ok = this.wake();
+    if (!this.timers.length) this.idle();
+    return ok;
+  },
+
+  /** 真的要出聲之前叫醒音訊環境。 */
+  wake() {
+    clearTimeout(this.idleTimer);
+    this.idleTimer = 0;
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) this.ctx = new AC();
     }
-    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      const r = this.ctx.resume();
+      if (r && r.catch) r.catch(() => { /* 尚未取得互動許可 */ });
+    }
     return !!this.ctx;
+  },
+
+  /** 沒在響鈴就把音訊環境暫停，留一點時間讓最後一聲的尾音放完。 */
+  idle() {
+    clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = 0;
+      if (this.ctx && this.ctx.state === 'running') {
+        const r = this.ctx.suspend();
+        if (r && r.catch) r.catch(() => { /* 忽略 */ });
+      }
+    }, 400);
   },
 
   /** 響 times 次，每次是 2 秒響鈴 + 4 秒靜音，這是一般電話的節奏。 */
   start(times) {
     this.stop();
-    if (!this.prime()) return;
+    if (!this.wake()) return;
     const n = Math.max(1, Math.min(10, times || 2));
     for (let i = 0; i < n; i++) {
       this.timers.push(setTimeout(() => this.oneRing(), i * 6000));
@@ -313,6 +342,7 @@ const Ringer = {
     this.nodes.forEach((n) => { try { n.stop ? n.stop() : n.disconnect(); } catch (e) { /* 已停止 */ } });
     this.nodes = [];
     if (navigator.vibrate) { try { navigator.vibrate(0); } catch (e) { /* 不支援 */ } }
+    this.idle();
   },
 };
 
@@ -551,6 +581,8 @@ const Speech = {
   /** 連續「開始後馬上就結束」的次數，用來判斷辨識服務是不是壞了 */
   rapidFails: 0,
   lastStartAt: 0,
+  /** 朗讀沒有回報結束時的保險計時器，見 speak() */
+  speakWatchdog: 0,
   /** 因為切到背景而暫停，回到前景要自動接回去 */
   pausedByHide: false,
 
@@ -578,6 +610,10 @@ const Speech = {
       return;
     }
     this.want = true;
+    // 使用者親自按下麥克風時，不管前面卡在什麼狀態都先清乾淨。
+    // 沒有這一段的話，只要朗讀那邊卡住一次，麥克風就再也叫不起來。
+    if (this.speaking) this.stopSpeaking();
+    this.rapidFails = 0;
     this.begin();
   },
 
@@ -593,7 +629,12 @@ const Speech = {
     rec.lang = LANGS[prefs.lang].stt;
     // iOS 的即時辨識結果事件很密集又不穩，關掉可以明顯降低當掉的機率
     rec.interimResults = !IS_IOS;
-    rec.continuous = false;
+    /*
+     * Android 每重新啟動一次辨識就會發出一聲提示音。單次模式下講完一句
+     * 或靜默幾秒就結束，接著馬上重啟，整通電話就變成一直有雜音。
+     * 改成連續辨識可以大幅減少重啟次數。iOS 的連續模式很不穩，維持單次。
+     */
+    rec.continuous = !IS_IOS;
     rec.maxAlternatives = 1;
 
     rec.onresult = (e) => {
@@ -697,15 +738,38 @@ const Speech = {
 
     const done = () => {
       if (speechSynthesis.speaking || speechSynthesis.pending) return;
-      this.speaking = false;
-      if (this.want) setTimeout(() => this.begin(), 250);
+      this.finishSpeaking();
     };
     u.onend = done;
     u.onerror = done;
+
+    /*
+     * 這道保險是必要的：瀏覽器（尤其 Android 的 Chrome）有時候根本不會回報
+     * onend／onerror——句子偏長、缺少該語言的語音、朗讀途中切到背景都會發生。
+     * 少了它，speaking 會永遠停在 true，begin() 每次都直接 return，
+     * 使用者看到的就是「講沒幾句麥克風就打不開，整通電話廢掉」。
+     */
+    clearTimeout(this.speakWatchdog);
+    const budget = Math.min(5000 + text.length * 250, 30000);
+    this.speakWatchdog = setTimeout(() => {
+      try { speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }
+      this.finishSpeaking();
+    }, budget);
+
     speechSynthesis.speak(u);
   },
 
+  /** 朗讀結束（或被保險機制強制結束）後回到聆聽狀態。 */
+  finishSpeaking() {
+    clearTimeout(this.speakWatchdog);
+    this.speakWatchdog = 0;
+    this.speaking = false;
+    if (this.want) setTimeout(() => this.begin(), 250);
+  },
+
   stopSpeaking() {
+    clearTimeout(this.speakWatchdog);
+    this.speakWatchdog = 0;
     if (window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) { /* 忽略 */ } }
     this.speaking = false;
   },
