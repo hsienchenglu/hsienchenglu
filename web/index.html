@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0E1116">
+<meta name="app-version" content="20260814-0932">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -196,6 +197,9 @@
   <button id="btnSave" class="btn primary block mt" data-i18n="save">儲存</button>
   <div class="hint center mb" data-i18n="browser_note"></div>
 </section>
+
+<!-- 偵測到新版本時才出現，整條都可以點 -->
+<button id="updateBar" class="update-bar hidden" data-i18n="update_prompt"></button>
 
 <div id="toast" class="toast"></div>
 

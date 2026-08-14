@@ -283,3 +283,24 @@ code {
   place-items: center;
 }
 .lang-btn:active { transform: scale(0.94); }
+
+/* 有新版本時從底部浮出來的提示，整條都可以點 */
+.update-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  border: none;
+  border-radius: 14px;
+  padding: 13px 16px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  max-width: 616px;
+  margin: 0 auto;
+}
+.update-bar:active { transform: scale(0.98); }

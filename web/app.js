@@ -483,6 +483,57 @@ function b64ToBytes(base64) {
   return out;
 }
 
+// ───────────────────────────── 版本更新提示
+
+/**
+ * 網頁版最大的好處是「更新一次，所有人都是新版」，但前提是使用者
+ * 真的重新載入過。加到主畫面之後頁面常常一直開著，不重開就一直是舊版。
+ *
+ * 作法：把版本戳記烙在頁面裡（index.html 的 app-version），
+ * 再定期去問伺服器上的 version.json。兩者不同就代表手上這份是舊的。
+ */
+const Updater = {
+  baked: (document.querySelector('meta[name="app-version"]') || {}).content || '',
+  lastCheck: 0,
+  shown: false,
+
+  init() {
+    if (!this.baked || this.baked === 'dev') return; // 開發中不檢查
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) this.check();
+    });
+    setInterval(() => this.check(), 30 * 60 * 1000);
+    setTimeout(() => this.check(), 5000); // 開啟後先確認一次
+  },
+
+  async check() {
+    if (this.shown || Call.active) return; // 通話中不要打擾
+    if (Date.now() - this.lastCheck < 5 * 60 * 1000) return;
+    this.lastCheck = Date.now();
+
+    let latest = null;
+    try {
+      const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) latest = (await r.json()).version;
+    } catch (e) {
+      return; // 沒網路就算了，下次再說
+    }
+    if (latest && latest !== this.baked) {
+      this.shown = true;
+      $('updateBar').classList.remove('hidden');
+    }
+  },
+
+  async apply() {
+    // 順手叫 Service Worker 也去抓新版，再整頁重新載入
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) await reg.update();
+    } catch (e) { /* 沒有也無所謂 */ }
+    location.reload();
+  },
+};
+
 // ───────────────────────────── 語音辨識與朗讀
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1323,6 +1374,8 @@ function wire() {
     Push.saveConfig(); // 帳號或資料庫換了，背景通知也要跟著更新
     showScreen('screenMain');
   };
+  $('updateBar').onclick = () => Updater.apply();
+
   $('btnUiLang').onclick = () => {
     const next = UI_LANG === 'zh' ? 'id' : 'zh';
     prefs.uiLang = next;
@@ -1467,6 +1520,7 @@ function init() {
   Speech.loadVoices();
   Wave.init();
   Push.register();
+  Updater.init();
 
   // 從通知點進來時，Service Worker 會通知這裡
   if ('serviceWorker' in navigator) {

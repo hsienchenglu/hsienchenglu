@@ -19,6 +19,7 @@ const I18N = {
     lang_id: '印尼文',
     lang_pair: '{0} → {1}',
     ui_lang_switched: '介面已切換成中文',
+    update_prompt: '有新版本，點一下更新',
 
     // 主畫面
     my_account: '我的帳號：{0}',
@@ -145,6 +146,7 @@ const I18N = {
     lang_id: 'Bahasa Indonesia',
     lang_pair: '{0} → {1}',
     ui_lang_switched: 'Tampilan diubah ke Bahasa Indonesia',
+    update_prompt: 'Ada versi baru, ketuk untuk memperbarui',
 
     // Layar utama
     my_account: 'Akun saya: {0}',

@@ -116,10 +116,23 @@ https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app
 
 **之後每次更新網頁**
 
-到 <https://app.netlify.com/projects/zhid-talk/deploys>，把 `web` 資料夾再拖一次即可。
+1. **先蓋版本戳記**（在專案根目錄執行）：
+
+   ```
+   python3 tools/stamp-version.py
+   ```
+
+   它會把當下的台北時間寫進 `web/version.json`，同時改掉 `index.html`
+   裡的 `<meta name="app-version">`。
+
+2. 到 <https://app.netlify.com/projects/zhid-talk/deploys>，把 `web` 資料夾再拖一次。
 
 > ⚠️ 拖曳型站台**沒有** Trigger deploy 按鈕（那是連結 Git 的站台才有），
 > 更新網頁或環境變數生效都靠重新拖曳。
+
+> ⚠️ **戳記不能省略。** 網頁是拿「頁面裡烙印的版本」跟「伺服器上的
+> version.json」比對，不一樣才會跳出「有新版本，點一下更新」。
+> 忘了跑這個指令，兩邊永遠相同，使用者手上就會一直停在舊版而不自知。
 
 ### 步驟 4：設定 Netlify 環境變數
 
@@ -360,9 +373,13 @@ git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-t
 ### 更新網頁版
 
 1. 改 `web/` 底下的檔案
-2. 把 `web` 資料夾拖到 Netlify 的 Deploys 頁面
-3. 手機端可能需要**關掉 PWA 再重開**才會拿到新版
-   （Service Worker 已設定不快取，但頁面本身可能還在瀏覽器快取裡）
+2. 跑 `python3 tools/stamp-version.py` 蓋上新的版本戳記（**不可省略**）
+3. 把 `web` 資料夾拖到 Netlify 的 Deploys 頁面
+4. 使用者端不必做任何事：頁面回到前景時會自動比對版本，
+   偵測到新版就在畫面下方跳出「有新版本，點一下更新」，點一下就換成新版
+
+> 想立刻看到效果，也可以關掉 PWA 再重開。
+> 通話中不會跳提示，以免打斷對話。
 
 ### 更新 Android App
 
@@ -415,6 +432,8 @@ git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-t
 | iPhone 通話中自己關閉 | 記憶體壓力（已修正） | 確認用的是最新版網頁 |
 | 一直跳出沒人撥的來電 | 上次通話的殘留節點 | 設定頁按「清除殘留的通話狀態」 |
 | 撥不出去、對方收不到 | 同上 | 同上 |
+| 更新了卻沒跳「有新版本」 | 部署前忘了跑 `tools/stamp-version.py` | 補跑戳記後再拖一次 |
+| 對方一直用舊版 | 頁面沒回到前景過 | 請對方切出去再切回來，或直接關掉重開 |
 
 ---
 
@@ -438,8 +457,10 @@ git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-t
 ├── web/                                  網頁版（部署到 Netlify）
 │   ├── index.html                        全部畫面
 │   ├── app.js                            所有邏輯
+│   ├── i18n.js                           中文／印尼文介面字串
 │   ├── styles.css                        深色主題
 │   ├── sw.js                             Service Worker（背景通知）
+│   ├── version.json                      版本戳記，供更新提示比對
 │   ├── manifest.webmanifest              PWA 設定
 │   ├── vapid.html                        VAPID 金鑰產生器
 │   ├── icons/                            PWA 圖示
@@ -449,6 +470,7 @@ git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-t
 │       ├── push.mts                      送出無內容推播
 │       └── push-key.mts                  提供 VAPID 公開金鑰
 │
+├── tools/stamp-version.py                部署前蓋版本戳記
 ├── .github/workflows/android.yml         自動編譯 APK
 ├── README.md                             使用說明
 └── DEPLOY.md                             本筆記

@@ -156,7 +156,15 @@ app/src/main/java/com/hsienchenglu/zhidtalk/
 
 **方法一：拖曳上傳（最快）**
 
-把 `web` 資料夾整個拖進 <https://app.netlify.com/drop> 即可。
+先在專案根目錄跑一次版本戳記，再把 `web` 資料夾整個拖進
+<https://app.netlify.com/drop>：
+
+```
+python3 tools/stamp-version.py
+```
+
+戳記是「有新版本，點一下更新」這個提示的依據，忘了跑的話使用者
+不會知道有新版可用。詳見下面的〈自動更新提示〉。
 
 **方法二：連結 GitHub（建議，之後改動會自動更新）**
 
@@ -243,6 +251,30 @@ app/src/main/java/com/hsienchenglu/zhidtalk/
 
 這樣就不需要實作 RFC 8291 的內容加密，也不需要任何 npm 套件，
 而且來電資訊不會經過 Google 或 Apple 的推播伺服器。
+
+## 自動更新提示
+
+網頁版的好處是「更新一次，所有人都是新版」，但前提是使用者真的重新載入過。
+加到主畫面之後頁面常常一直開著，不重開就一直停在舊版。
+
+所以頁面裡烙了一個版本戳記（`index.html` 的 `app-version`），
+每次回到前景時會去比對伺服器上的 `version.json`：
+
+- 兩邊一樣 → 什麼都不做
+- 不一樣 → 畫面下方跳出「有新版本，點一下更新」，點一下就重新載入換成新版
+
+通話中不會跳這個提示，也不會去打伺服器，以免打斷對話。
+抓不到 `version.json`（例如沒網路）就直接跳過，下次再說。
+
+**部署前一定要蓋戳記：**
+
+```
+python3 tools/stamp-version.py
+```
+
+它會用當下的台北時間（`YYYYMMDD-HHMM`）同時更新 `web/version.json`
+和 `index.html` 裡的 meta 標籤。沒跑這個指令，兩邊版本永遠相同，
+提示就永遠不會出現。
 
 ## 網頁版與 Android 版的差別
 
