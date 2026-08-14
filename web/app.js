@@ -1384,6 +1384,20 @@ function wire() {
     toast(t('ui_lang_switched'));
   };
 
+  /*
+   * 設定頁的介面語言要「選了就馬上換」。
+   * 第一次開網頁會直接停在設定頁，而主畫面的 ID 切換鍵這時候看不到；
+   * 若要按了儲存才生效，看不懂中文的人根本找不到儲存鍵在哪。
+   */
+  document.querySelectorAll('input[name="uilang"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      prefs.uiLang = radio.value;
+      savePrefs();
+      applyUiLang(radio.value);
+    });
+  });
+
   $('btnTest').onclick = testConnection;
 
   // 網頁如果在通話中被系統關掉，Firebase 裡會留下沒清乾淨的來電節點，
