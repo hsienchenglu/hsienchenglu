@@ -1,8 +1,11 @@
 # 譯通 部署與設定筆記
 
-> 建立日期：2026-08-13
+> 建立日期：2026-08-13　最後更新：2026-08-14
 > 這份筆記記錄從零建立整套系統的完整步驟、所有帳號與金鑰的位置、
 > 實際踩到的問題與解法，以及日後維護要注意的事。
+>
+> **想新增客戶、把網址給印尼買家用，看另一份 `CUSTOMERS.md`**——
+> 那裡有帳號命名規則、客戶端設定步驟，以及可以直接貼給對方的印尼文說明。
 
 ---
 
@@ -12,10 +15,14 @@
 | --- | --- |
 | 網頁版 | <https://zhid-talk.netlify.app> |
 | Netlify 後台 | <https://app.netlify.com/projects/zhid-talk> |
-| 程式碼 | <https://github.com/hsienchenglu/hsienchenglu> |
+| 程式碼（目前備份處） | <https://github.com/Aicom885/zhidtalk> |
+| 程式碼（原始 repo） | <https://github.com/hsienchenglu/hsienchenglu> |
 | 分支 | `claude/chinese-indonesian-translation-app-lqptxh` |
 | Android APK | GitHub → Actions → Build APK → Artifacts |
 | VAPID 金鑰產生器 | <https://zhid-talk.netlify.app/vapid.html> |
+
+> 原始 repo 屬於 `hsienchenglu` 帳號，但日常登入的是 `Aicom885`，
+> 推不上去（見 6-4b），所以改推到 `Aicom885/zhidtalk`。**以這個為準。**
 
 ---
 
@@ -317,13 +324,62 @@ healthcheck/           ← 「測試連線」寫入的位置
 
 兩者意義不同，不要搞混。
 
-**解法**：最後是在本機自行推送解決的。要注意解壓縮後**資料夾有兩層**，
+**解法**：在本機自行推送。要注意解壓縮後**資料夾有兩層**，
 要進到有 `app`、`web` 的那一層才是 git repo（`.git` 是隱藏資料夾，
 用 `app`／`web` 在不在來判斷）。
 
 ```
 git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-translation-app-lqptxh
 ```
+
+### 6-4b　本機推送也被拒：`denied to Aicom885`
+
+**現象**：本機 `git push` 出現
+
+```
+remote: Permission to hsienchenglu/hsienchenglu.git denied to Aicom885.
+fatal: ... The requested URL returned error: 403
+```
+
+**判讀**：這行已經把答案寫出來了——**登入的帳號（Aicom885）不是 repo 擁有者
+（hsienchenglu）**。等於拿 A 的鑰匙開 B 的門，跟有沒有付費完全無關。
+看到 `denied to XXX` 就先確認 XXX 是不是你以為的那個帳號。
+
+**確認自己是誰**：開 <https://github.com/settings/profile> 看 Username。
+
+**當時的解法**：不去動原本的帳號，改成**推到自己帳號底下的新 repo**。
+這樣不必登出、不必清認證管理員，現有的憑證直接可用。
+
+1. 用 Aicom885 開 <https://github.com/new> 建 `zhidtalk`
+   （README／.gitignore／License 都不要勾，會跟既有紀錄打架）
+2. 改遠端位址並推送：
+
+```
+git remote set-url origin https://github.com/Aicom885/zhidtalk
+git push -u origin claude/chinese-indonesian-translation-app-lqptxh
+```
+
+3. 想讓程式碼直接顯示在 repo 首頁，再推一次到 `main`：
+
+```
+git push origin claude/chinese-indonesian-translation-app-lqptxh:main
+```
+
+> 專案裡已經預先設好 `aicom` 這個遠端捷徑，之後解開新的 zip 直接用
+> `git push aicom claude/chinese-indonesian-translation-app-lqptxh:main` 即可，
+> 不必再打 set-url。
+
+**其他要分辨的訊息**：
+
+| 訊息 | 意思 |
+| --- | --- |
+| `Everything up-to-date` | 站在舊資料夾，那份紀錄本來就推過了 |
+| `rejected` / `non-fast-forward` | 遠端有本機沒有的東西，先 `git pull --rebase` |
+| 要求輸入密碼 | 密碼欄要貼 Personal Access Token，不是登入密碼 |
+| `denied to XXX` | 帳號不對，見上面 |
+
+> 推之前先用 `git log --oneline -1` 確認站在正確的資料夾，
+> 看到的應該是你最新那筆 commit 的訊息。
 
 ### 6-5　GitHub 網頁上傳顯示「Uploads are disabled」
 
@@ -366,6 +422,18 @@ git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-t
 
 **日後原則**：金鑰一律自己在服務商後台貼上，不要經過對話。
 
+### 6-9　印尼客戶卡在中文設定頁
+
+**現象**：把網址給印尼客戶，他第一次打開會**直接停在設定頁**，
+而切換介面語言的 `ID` 按鈕在主畫面，這時候根本看不到。
+設定頁雖然有介面語言選項，但原本要**按下儲存才生效**——
+看不懂中文的人找不到儲存鍵在哪，等於卡死。
+
+**解法**：改成設定頁的介面語言**點下去就立刻換**並存檔，不必按儲存。
+
+**後續**：把網址給客戶時，第一句話就告訴他
+「最上面那格選 Bahasa Indonesia」。完整說明看 `CUSTOMERS.md`。
+
 ---
 
 ## 七、日常維護
@@ -380,6 +448,27 @@ git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-t
 
 > 想立刻看到效果，也可以關掉 PWA 再重開。
 > 通話中不會跳提示，以免打斷對話。
+
+### 備份程式碼到 GitHub
+
+解開新的 `zhidtalk-with-git.zip` 之後，進到**看得到 `app`、`web` 的那一層**，
+先確認站對地方：
+
+```
+git log --oneline -1
+```
+
+看到的應該是最新那筆 commit。確認後推上去：
+
+```
+git push aicom claude/chinese-indonesian-translation-app-lqptxh:main
+```
+
+`aicom` 這個遠端捷徑已經設在專案裡，指向 <https://github.com/Aicom885/zhidtalk>。
+若出現 `rejected`，先 `git pull --rebase aicom main` 再推一次。
+
+> 這一步純粹是備份，**不做也不影響使用**。實際上線靠的是把 `web`
+> 資料夾拖到 Netlify。
 
 ### 更新 Android App
 
@@ -473,6 +562,7 @@ git -C "解壓縮路徑\hsienchenglu" push -u origin claude/chinese-indonesian-t
 ├── tools/stamp-version.py                部署前蓋版本戳記
 ├── .github/workflows/android.yml         自動編譯 APK
 ├── README.md                             使用說明
+├── CUSTOMERS.md                          新增客戶與賣貨操作手冊
 └── DEPLOY.md                             本筆記
 ```
 
