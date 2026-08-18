@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0E1116">
-<meta name="app-version" content="20260814-2246">
+<meta name="app-version" content="20260818-2142">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -155,6 +155,11 @@
     <div class="row gap">
       <label class="radio"><input type="radio" name="lang" value="zh"> <span data-i18n="lang_zh">中文</span></label>
       <label class="radio"><input type="radio" name="lang" value="id"> <span data-i18n="lang_id">印尼文</span></label>
+    </div>
+    <!-- 對方的話會用這個語言唸出來，先在這裡確認手機唸得出來 -->
+    <div class="row between">
+      <span class="hint" data-i18n="tts_test_desc"></span>
+      <button id="btnTestVoice" class="btn text" data-i18n="tts_test">試唸</button>
     </div>
   </div>
 

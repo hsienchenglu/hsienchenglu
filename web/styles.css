@@ -304,3 +304,7 @@ code {
   margin: 0 auto;
 }
 .update-bar:active { transform: scale(0.98); }
+
+/* 可以點來重聽的訊息，給一點按得下去的暗示 */
+.bubble.speakable { cursor: pointer; }
+.bubble.speakable:active { filter: brightness(1.15); }

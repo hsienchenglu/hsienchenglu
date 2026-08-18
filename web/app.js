@@ -581,8 +581,12 @@ const Speech = {
   /** 連續「開始後馬上就結束」的次數，用來判斷辨識服務是不是壞了 */
   rapidFails: 0,
   lastStartAt: 0,
-  /** 朗讀沒有回報結束時的保險計時器，見 speak() */
+  /** 朗讀沒有回報結束時的保險計時器，見 utter() */
   speakWatchdog: 0,
+  /** 檢查朗讀到底有沒有真的開始的計時器 */
+  startCheck: 0,
+  /** 目前這一句，重試前要先把它的處理函式拆掉 */
+  cur: null,
   /** 因為切到背景而暫停，回到前景要自動接回去 */
   pausedByHide: false,
 
@@ -741,48 +745,88 @@ const Speech = {
     this.speaking = true;
     this.kill();
     Call.micUI(false);
+    this.utter(text, lang, 1);
+  },
+
+  /**
+   * 手機上的朗讀有好幾種「安靜地失敗」的方式，這裡一次擋掉：
+   *
+   *  - Chrome 有時候會停在 paused，speak() 進得去卻不出聲 → 先 resume()
+   *  - 前一句沒收乾淨會把整個佇列卡住 → 先 cancel() 清一次
+   *  - Android 的語音清單是非同步載入的，第一次拿到的是空陣列 → 用時再取
+   *  - 有時候 speak() 呼叫了完全沒動靜（沒裝語音資料、引擎當掉）
+   *    → 900 毫秒內沒開始就重試一次，再不行就明講原因，不要默默沒聲音
+   */
+  utter(text, lang, attempt) {
+    const synth = window.speechSynthesis;
+
+    // 清掉上一句的處理函式，否則等一下的 cancel() 會被當成「唸完了」
+    if (this.cur) {
+      this.cur.onstart = this.cur.onend = this.cur.onerror = null;
+      this.cur = null;
+    }
+    try { if (synth.paused) synth.resume(); } catch (e) { /* 忽略 */ }
+    try { synth.cancel(); } catch (e) { /* 忽略 */ }
+
+    if (!this.voices.length) this.voices = synth.getVoices() || [];
 
     const u = new SpeechSynthesisUtterance(text);
     u.lang = LANGS[lang].tts;
     u.rate = 0.95;
     const v = this.pickVoice(LANGS[lang].tts);
     if (v) u.voice = v;
-    else toast(t('err_tts_voice', langLabel(lang)));
+    this.cur = u;
 
+    let started = false;
+    u.onstart = () => { started = true; clearTimeout(this.startCheck); };
     const done = () => {
-      if (speechSynthesis.speaking || speechSynthesis.pending) return;
+      if (synth.speaking || synth.pending) return;
       this.finishSpeaking();
     };
     u.onend = done;
     u.onerror = done;
 
     /*
-     * 這道保險是必要的：瀏覽器（尤其 Android 的 Chrome）有時候根本不會回報
-     * onend／onerror——句子偏長、缺少該語言的語音、朗讀途中切到背景都會發生。
-     * 少了它，speaking 會永遠停在 true，begin() 每次都直接 return，
-     * 使用者看到的就是「講沒幾句麥克風就打不開，整通電話廢掉」。
+     * 沒有這道保險的話：瀏覽器不回報 onend／onerror 時（句子偏長、缺語音、
+     * 朗讀途中切到背景都會發生），speaking 會永遠停在 true，麥克風再也打不開。
      */
     clearTimeout(this.speakWatchdog);
-    const budget = Math.min(5000 + text.length * 250, 30000);
     this.speakWatchdog = setTimeout(() => {
-      try { speechSynthesis.cancel(); } catch (e) { /* 忽略 */ }
+      try { synth.cancel(); } catch (e) { /* 忽略 */ }
       this.finishSpeaking();
-    }, budget);
+    }, Math.min(5000 + text.length * 250, 30000));
 
-    speechSynthesis.speak(u);
+    clearTimeout(this.startCheck);
+    this.startCheck = setTimeout(() => {
+      if (started || synth.speaking) return;
+      if (attempt < 2) { this.utter(text, lang, attempt + 1); return; }
+      toast(v ? t('err_tts_silent') : t('err_tts_voice', langLabel(lang)));
+      this.finishSpeaking();
+    }, 900);
+
+    synth.speak(u);
   },
 
   /** 朗讀結束（或被保險機制強制結束）後回到聆聽狀態。 */
   finishSpeaking() {
     clearTimeout(this.speakWatchdog);
+    clearTimeout(this.startCheck);
     this.speakWatchdog = 0;
+    this.startCheck = 0;
+    this.cur = null;
     this.speaking = false;
     if (this.want) setTimeout(() => this.begin(), 250);
   },
 
   stopSpeaking() {
     clearTimeout(this.speakWatchdog);
+    clearTimeout(this.startCheck);
     this.speakWatchdog = 0;
+    this.startCheck = 0;
+    if (this.cur) {
+      this.cur.onstart = this.cur.onend = this.cur.onerror = null;
+      this.cur = null;
+    }
     if (window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) { /* 忽略 */ } }
     this.speaking = false;
   },
@@ -964,6 +1008,20 @@ function msgBubble(m) {
   b.appendChild(el('div', 'src', m.src));
   if (m.dst) b.appendChild(el('div', 'dst', m.dst));
   li.appendChild(b);
+
+  /*
+   * 點一下重聽。自動朗讀有可能因為手機沒裝語音、音量沒開、或引擎當掉而
+   * 沒出聲，這裡給一個明確的補救動作——而且是使用者親手點的，
+   * 有些瀏覽器只認使用者動作觸發的朗讀。
+   */
+  if (m.dst) {
+    b.classList.add('speakable');
+    b.title = t('tap_to_replay');
+    b.onclick = () => {
+      // 對方的話唸我聽得懂的那一句；自己的話唸送出去的譯文
+      Speech.speak(m.dst, m.fromMe ? otherLang(prefs.lang) : prefs.lang);
+    };
+  }
   return li;
 }
 
@@ -1476,6 +1534,12 @@ function wire() {
   });
 
   $('btnTest').onclick = testConnection;
+
+  // 對方的話是用「我說的語言」唸出來的，所以就測這個語言
+  $('btnTestVoice').onclick = () => {
+    const lang = document.querySelector('input[name="lang"]:checked').value;
+    Speech.speak(t('tts_test_sample'), lang);
+  };
 
   // 網頁如果在通話中被系統關掉，Firebase 裡會留下沒清乾淨的來電節點，
   // 之後就會一直跳出假來電或撥不出去。這顆按鈕是給使用者的自救出口。
