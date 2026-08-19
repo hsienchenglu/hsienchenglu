@@ -594,6 +594,8 @@ const Speech = {
   audioUrl: '',
   /** 已經跟伺服器要過的句子，重播不必再付一次錢 */
   ttsCache: new Map(),
+  /** 上一句實際上是誰唸的：server（網路語音）或 builtin（手機內建） */
+  lastSource: '',
   /** 因為切到背景而暫停，回到前景要自動接回去 */
   pausedByHide: false,
 
@@ -816,6 +818,7 @@ const Speech = {
 
     try {
       const p = a.play();
+      this.lastSource = 'server';
       if (p && p.catch) {
         p.catch(() => { release(); if (!stale()) this.fallbackSpeak(text, lang, seq); });
       }
@@ -881,7 +884,7 @@ const Speech = {
     this.cur = u;
 
     let started = false;
-    u.onstart = () => { started = true; clearTimeout(this.startCheck); };
+    u.onstart = () => { started = true; this.lastSource = 'builtin'; clearTimeout(this.startCheck); };
     const done = () => {
       if (synth.speaking || synth.pending) return;
       this.finishSpeaking();
@@ -1643,10 +1646,18 @@ function wire() {
 
   $('btnTest').onclick = testConnection;
 
-  // 對方的話是用「我說的語言」唸出來的，所以就測這個語言
+  // 對方的話是用「我說的語言」唸出來的，所以就測這個語言。
+  // 唸完順便講清楚用的是哪一種聲音——兩者聽起來可能差不多，
+  // 但「退回手機內建」代表伺服器那條路有問題，要看得出來才能修。
   $('btnTestVoice').onclick = () => {
     const lang = document.querySelector('input[name="lang"]:checked').value;
+    Speech.lastSource = '';
     Speech.speak(t('tts_test_sample'), lang);
+    setTimeout(() => {
+      if (Speech.lastSource === 'server') toast(t('tts_via_server'));
+      else if (Speech.lastSource === 'builtin') toast(t('tts_via_builtin'));
+      else toast(t('tts_via_none'));
+    }, 2800);
   };
 
   // 網頁如果在通話中被系統關掉，Firebase 裡會留下沒清乾淨的來電節點，
