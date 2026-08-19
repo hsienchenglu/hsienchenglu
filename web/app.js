@@ -22,7 +22,7 @@ const DEFAULTS = {
   account: '', peer: '', lang: 'zh', uiLang: '',
   dbUrl: '', dbSecret: '',
   provider: 'google', apiKey: '',
-  ring: 2, autoListen: true, autoSpeak: true,
+  ring: 2, autoListen: true, autoSpeak: true, serverTts: true,
 };
 
 let prefs = loadPrefs();
@@ -587,6 +587,13 @@ const Speech = {
   startCheck: 0,
   /** 目前這一句，重試前要先把它的處理函式拆掉 */
   cur: null,
+  /** 這一句的編號，用來忽略已經過期的回應（例如新訊息蓋掉舊的） */
+  seq: 0,
+  /** 正在播的 mp3 */
+  audio: null,
+  audioUrl: '',
+  /** 已經跟伺服器要過的句子，重播不必再付一次錢 */
+  ttsCache: new Map(),
   /** 因為切到背景而暫停，回到前景要自動接回去 */
   pausedByHide: false,
 
@@ -741,11 +748,107 @@ const Speech = {
 
   /** 朗讀時先關麥克風，否則會把喇叭的聲音再辨識一次，造成無限迴圈。 */
   speak(text, lang) {
-    if (!text || !window.speechSynthesis) return;
+    if (!text) return;
     this.speaking = true;
     this.kill();
+    this.stopAudio();
     Call.micUI(false);
-    this.utter(text, lang, 1);
+    this.seq++;
+    if (prefs.serverTts) this.speakViaServer(text, lang, this.seq);
+    else if (window.speechSynthesis) this.utter(text, lang, 1);
+    else this.finishSpeaking();
+  },
+
+  /**
+   * 用伺服器產生的 mp3 朗讀。
+   *
+   * 手機內建的朗讀要看有沒有裝該語言的語音資料，沒裝就整個不出聲，
+   * 而且每支手機行為都不一樣。改成播 mp3 之後，只要手機會出聲就會唸。
+   * 任何一個環節失敗都退回手機內建的朗讀，不會變成完全沒聲音。
+   */
+  async speakViaServer(text, lang, seq) {
+    const stale = () => seq !== this.seq;
+
+    clearTimeout(this.speakWatchdog);
+    // 網路慢或函式掛掉時不能無限等，時間到就改用手機內建的唸
+    this.speakWatchdog = setTimeout(() => {
+      if (!stale()) this.fallbackSpeak(text, lang, seq);
+    }, 7000);
+
+    let blob = this.ttsCache.get(text);
+    if (!blob) {
+      try {
+        const r = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        blob = await r.blob();
+        if (!blob || !blob.size) throw new Error('空的音檔');
+        this.cacheTts(text, blob);
+      } catch (e) {
+        if (!stale()) this.fallbackSpeak(text, lang, seq);
+        return;
+      }
+    }
+    if (stale()) return;
+
+    const url = URL.createObjectURL(blob);
+    const a = new Audio(url);
+    this.audio = a;
+    this.audioUrl = url;
+
+    const release = () => {
+      if (this.audioUrl === url) { this.audio = null; this.audioUrl = ''; }
+      URL.revokeObjectURL(url);
+    };
+    a.onended = () => { release(); if (!stale()) this.finishSpeaking(); };
+    a.onerror = () => { release(); if (!stale()) this.fallbackSpeak(text, lang, seq); };
+    a.onloadedmetadata = () => {
+      // 知道實際長度之後才好抓保險時間，太短會把還在唸的句子切掉
+      if (stale() || !isFinite(a.duration)) return;
+      clearTimeout(this.speakWatchdog);
+      this.speakWatchdog = setTimeout(() => {
+        if (!stale()) this.finishSpeaking();
+      }, a.duration * 1000 + 3000);
+    };
+
+    try {
+      const p = a.play();
+      if (p && p.catch) {
+        p.catch(() => { release(); if (!stale()) this.fallbackSpeak(text, lang, seq); });
+      }
+    } catch (e) {
+      release();
+      if (!stale()) this.fallbackSpeak(text, lang, seq);
+    }
+  },
+
+  /** 伺服器朗讀走不通時，退回手機內建的。 */
+  fallbackSpeak(text, lang, seq) {
+    if (seq !== this.seq) return;
+    this.stopAudio();
+    if (window.speechSynthesis) this.utter(text, lang, 1);
+    else this.finishSpeaking();
+  },
+
+  /** 同一句話（例如點訊息重聽）不必再跟伺服器要一次，省錢也省等待。 */
+  cacheTts(text, blob) {
+    this.ttsCache.set(text, blob);
+    while (this.ttsCache.size > 20) {
+      this.ttsCache.delete(this.ttsCache.keys().next().value);
+    }
+  },
+
+  stopAudio() {
+    if (!this.audio) return;
+    const a = this.audio;
+    a.onended = a.onerror = a.onloadedmetadata = null;
+    try { a.pause(); } catch (e) { /* 忽略 */ }
+    if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
+    this.audio = null;
+    this.audioUrl = '';
   },
 
   /**
@@ -814,6 +917,7 @@ const Speech = {
     this.speakWatchdog = 0;
     this.startCheck = 0;
     this.cur = null;
+    this.stopAudio();
     this.speaking = false;
     if (this.want) setTimeout(() => this.begin(), 250);
   },
@@ -823,6 +927,8 @@ const Speech = {
     clearTimeout(this.startCheck);
     this.speakWatchdog = 0;
     this.startCheck = 0;
+    this.seq++;              // 讓還在飛的回應失效
+    this.stopAudio();
     if (this.cur) {
       this.cur.onstart = this.cur.onend = this.cur.onerror = null;
       this.cur = null;
@@ -1416,6 +1522,7 @@ function fillSettings() {
   $('ringLabel').textContent = t('ring_times', prefs.ring);
   $('setAutoListen').checked = prefs.autoListen;
   $('setAutoSpeak').checked = prefs.autoSpeak;
+  $('setServerTts').checked = prefs.serverTts;
   document.querySelector(`input[name="lang"][value="${prefs.lang}"]`).checked = true;
   document.querySelector(`input[name="provider"][value="${prefs.provider}"]`).checked = true;
   document.querySelector(`input[name="uilang"][value="${UI_LANG}"]`).checked = true;
@@ -1438,6 +1545,7 @@ function readSettings() {
   prefs.ring = parseInt($('setRing').value, 10) || 2;
   prefs.autoListen = $('setAutoListen').checked;
   prefs.autoSpeak = $('setAutoSpeak').checked;
+  prefs.serverTts = $('setServerTts').checked;
   prefs.uiLang = document.querySelector('input[name="uilang"]:checked').value;
   savePrefs();
   applyUiLang(prefs.uiLang);

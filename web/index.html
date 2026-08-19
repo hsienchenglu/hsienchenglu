@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0E1116">
-<meta name="app-version" content="20260818-2142">
+<meta name="app-version" content="20260819-1044">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -191,6 +191,9 @@
     <input id="setRing" class="slider" type="range" min="1" max="5" step="1" value="2">
     <label class="check"><input id="setAutoListen" type="checkbox"> <span data-i18n="auto_listen">通話中自動聆聽</span></label>
     <label class="check"><input id="setAutoSpeak" type="checkbox"> <span data-i18n="auto_speak">自動朗讀對方的話</span></label>
+    <!-- 用伺服器產生的聲音，手機沒裝語音資料也唸得出來 -->
+    <label class="check"><input id="setServerTts" type="checkbox"> <span data-i18n="server_tts">用網路語音朗讀（比較自然）</span></label>
+    <div class="hint" data-i18n="server_tts_desc"></div>
   </div>
 
   <button id="btnTest" class="btn outline block" data-i18n="test_connection">測試連線與翻譯</button>
