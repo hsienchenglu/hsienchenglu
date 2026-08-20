@@ -14,9 +14,24 @@
 const LANGS = {
   zh: { api: 'zh-TW', stt: 'zh-TW', tts: 'zh-TW', key: 'lang_zh' },
   id: { api: 'id', stt: 'id-ID', tts: 'id-ID', key: 'lang_id' },
+  en: { api: 'en', stt: 'en-US', tts: 'en-US', key: 'lang_en' },
 };
-const langLabel = (l) => t(LANGS[l].key);
-const otherLang = (l) => (l === 'zh' ? 'id' : 'zh');
+const langLabel = (l) => t(LANGS[l] ? LANGS[l].key : 'lang_zh');
+
+/** 把線路上的語言代碼（zh-TW／id／en-US…）換回內部代號。 */
+function langFromApi(code) {
+  const c = String(code || '').toLowerCase();
+  for (const k of Object.keys(LANGS)) {
+    if (c === k || c.startsWith(k + '-') || c.startsWith(LANGS[k].api.toLowerCase())) return k;
+  }
+  return '';
+}
+
+/**
+ * 舊版（只有中文和印尼文）沒有宣告自己的語言，只好照舊規則猜。
+ * 三種語言之後這個推論不成立，所以只在對方沒宣告時當退路。
+ */
+const legacyPeerLang = (l) => (l === 'zh' ? 'id' : 'zh');
 
 const DEFAULTS = {
   account: '', peer: '', lang: 'zh', uiLang: '',
@@ -111,6 +126,12 @@ async function fbPush(path, value) {
   if (!r.ok) throw new Error('資料庫寫入失敗 HTTP ' + r.status);
   const j = await r.json().catch(() => ({}));
   return j.name || null;
+}
+
+async function fbGet(path) {
+  const r = await fetch(fbUrl(path));
+  if (!r.ok) throw new Error('資料庫讀取失敗 HTTP ' + r.status);
+  return r.json();
 }
 
 async function fbDelete(path) {
@@ -1128,7 +1149,7 @@ function msgBubble(m) {
     b.title = t('tap_to_replay');
     b.onclick = () => {
       // 對方的話唸我聽得懂的那一句；自己的話唸送出去的譯文
-      Speech.speak(m.dst, m.fromMe ? otherLang(prefs.lang) : prefs.lang);
+      Speech.speak(m.dst, LANGS[m.dstLang] ? m.dstLang : prefs.lang);
     };
   }
   return li;
@@ -1193,7 +1214,7 @@ const Standby = {
     this.pending = {
       callId: data.callId,
       from: data.from,
-      fromLang: data.fromLang && String(data.fromLang).startsWith('id') ? 'id' : 'zh',
+      fromLang: langFromApi(data.fromLang) || legacyPeerLang(prefs.lang),
       startTs: Date.now(),
     };
     this.showIncoming();
@@ -1223,9 +1244,15 @@ const Standby = {
     this.pending = null;
     this.hideIncoming();
     Ringer.prime();
-    fbPut(`calls/${p.callId}/state`, 'accepted').catch((e) => toast(e.message));
+    // 先宣告語言再改狀態，撥號方收到 accepted 時才讀得到
+    fbPut(`calls/${p.callId}/meta/calleeLang`, LANGS[prefs.lang].api)
+      .catch(() => { /* 舊版沒這個欄位也不影響通話 */ })
+      .then(() => fbPut(`calls/${p.callId}/state`, 'accepted'))
+      .catch((e) => toast(e.message));
     fbDelete(`users/${this.account}/incoming`).catch(() => {});
-    Call.open({ callId: p.callId, peer: p.from, incoming: true, accepted: true });
+    Call.open({
+      callId: p.callId, peer: p.from, incoming: true, accepted: true, peerLang: p.fromLang,
+    });
   },
 
   reject(userRejected) {
@@ -1291,9 +1318,26 @@ const Call = {
   ringTimeout: null,
   wakeLock: null,
 
-  get target() { return otherLang(prefs.lang); },
+  /** 對方宣告的語言；還不知道的時候是空字串 */
+  peerLang: '',
 
-  open({ callId, peer, incoming, accepted }) {
+  /** 要翻成什麼語言。對方還沒宣告就先用舊規則猜，收到宣告後會自動修正。 */
+  get target() { return this.peerLang || legacyPeerLang(prefs.lang); },
+
+  /** 對方的語言可能從來電資訊、meta、或訊息本身得知，哪個先到就用哪個。 */
+  setPeerLang(lang) {
+    if (!lang || !LANGS[lang] || lang === this.peerLang) return;
+    this.peerLang = lang;
+    this.langPairUI();
+  },
+
+  langPairUI() {
+    $('callLangPair').textContent = this.peerLang
+      ? t('lang_pair', langLabel(prefs.lang), langLabel(this.peerLang))
+      : langLabel(prefs.lang);
+  },
+
+  open({ callId, peer, incoming, accepted, peerLang }) {
     this.active = true;
     this.callId = callId;
     this.peer = peer;
@@ -1303,9 +1347,10 @@ const Call = {
     this.startTs = Date.now();
     this.msgs = [];
     this.seen = new Set();
+    this.peerLang = LANGS[peerLang] ? peerLang : '';
 
     $('callPeer').textContent = peer;
-    $('callLangPair').textContent = t('lang_pair', langLabel(prefs.lang), langLabel(this.target));
+    this.langPairUI();
     $('callStatus').textContent = accepted ? t('status_connected') : t('status_calling');
     $('callDuration').textContent = '';
     $('transcript').innerHTML = '';
@@ -1392,13 +1437,26 @@ const Call = {
     this.seen.add(key);
     if (o.from === sanitize(prefs.account)) return; // 自己送的，畫面上已經有了
 
+    // 訊息本身就帶著來源語言，是最可靠的一手資料
+    this.setPeerLang(langFromApi(o.srcLang));
+
     const msg = {
       id: key, fromMe: false,
       src: o.src || '', dst: o.dst || '',
+      dstLang: prefs.lang,          // 對方的話已經翻成我的語言
       ts: o.ts || Date.now(),
     };
     this.append(msg);
     if (prefs.autoSpeak && msg.dst) Speech.speak(msg.dst, prefs.lang);
+  },
+
+  /** 撥號方一開始不知道對方講什麼，接通後才讀得到對方宣告的語言。 */
+  async fetchPeerLang() {
+    if (this.peerLang) return;
+    try {
+      const code = await fbGet(`calls/${this.callId}/meta/calleeLang`);
+      this.setPeerLang(langFromApi(code));
+    } catch (e) { /* 讀不到就先用舊規則，之後靠訊息裡的 srcLang 修正 */ }
   },
 
   onConnected() {
@@ -1407,6 +1465,7 @@ const Call = {
     this.connectedAt = Date.now();
     clearTimeout(this.ringTimeout);
     $('callStatus').textContent = t('status_connected');
+    if (!this.incoming) this.fetchPeerLang();
     if (prefs.autoListen) Speech.start();
   },
 
@@ -1438,7 +1497,9 @@ const Call = {
     }
 
     if (key) this.seen.add(key);
-    this.append({ id: key || 'local_' + ts, fromMe: true, src: text, dst, ts });
+    this.append({
+      id: key || 'local_' + ts, fromMe: true, src: text, dst, dstLang: this.target, ts,
+    });
     $('callStatus').textContent = t('status_connected');
   },
 
@@ -1562,7 +1623,7 @@ function readSettings() {
 function applyUiLang(lang) {
   setUiLang(lang || prefs.lang || 'zh');
   applyI18n();
-  $('btnUiLang').textContent = UI_LANG === 'zh' ? 'ID' : '中';
+  $('btnUiLang').textContent = { zh: 'ID', id: 'EN', en: '中' }[UI_LANG];
 
   refreshHeader();
   History.render();
@@ -1573,7 +1634,7 @@ function applyUiLang(lang) {
   Call.micUI(Speech.want);
 
   if (Call.active) {
-    $('callLangPair').textContent = t('lang_pair', langLabel(prefs.lang), langLabel(Call.target));
+    Call.langPairUI();
     $('callStatus').textContent = Call.connected ? t('status_connected') : t('status_calling');
   }
   Push.saveConfig(); // Service Worker 的通知也要跟著換語言
@@ -1581,7 +1642,7 @@ function applyUiLang(lang) {
 
 function refreshHeader() {
   $('myAccountLabel').textContent = prefs.account ? t('my_account', prefs.account) : t('no_account');
-  $('myLangLabel').textContent = t('lang_pair', langLabel(prefs.lang), langLabel(otherLang(prefs.lang)));
+  $('myLangLabel').textContent = langLabel(prefs.lang);
   $('setupHint').classList.toggle('hidden', isConfigured());
   if (prefs.peer && !$('inputPeer').value) $('inputPeer').value = prefs.peer;
 }
@@ -1623,7 +1684,7 @@ function wire() {
   $('updateBar').onclick = () => Updater.apply();
 
   $('btnUiLang').onclick = () => {
-    const next = UI_LANG === 'zh' ? 'id' : 'zh';
+    const next = nextUiLang(UI_LANG);
     prefs.uiLang = next;
     savePrefs();
     applyUiLang(next);

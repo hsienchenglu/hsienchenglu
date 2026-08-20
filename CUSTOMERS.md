@@ -1,7 +1,11 @@
 # 新增客戶與賣貨使用手冊
 
-給賣家（你）看的操作手冊。要怎麼把一位新的印尼客戶加進來、
+給賣家（你）看的操作手冊。要怎麼把一位新客戶加進來、
 怎麼用譯通跟他談生意、以及有哪些地方要注意。
+
+**支援三種語言：中文、印尼文、英文。** 每個人只設定「自己講什麼」，
+對方講什麼由對方自己設，接通後兩邊會自動對上——所以同一個帳號可以
+今天跟印尼客戶講、明天跟講英文的客戶講，不必改設定。
 
 ---
 
@@ -26,7 +30,7 @@
 | 不分大小寫 | `Sari` 和 `sari` 是同一個人 |
 | 空白和 `.` `$` `#` `[` `]` `/` 會被自動換成底線 | 所以不要用這些字元 |
 | **絕對不能重複** | 兩個人用同一個代號會互相搶來電 |
-| 建議用英數 | 印尼客戶也好打好記 |
+| 建議用英數 | 客戶也好打好記 |
 
 **建議取法**（挑一種，全部客戶統一）：
 
@@ -61,7 +65,8 @@
 
 ## 四、客戶那邊的五個步驟
 
-把第五節的印尼文訊息直接貼給他就好，以下是對照說明。
+把第五節的訊息（印尼文或英文）直接貼給他就好，以下以印尼文為例對照說明。
+講英文的客戶步驟一樣，只是第 2 步選 **English**。
 
 ### 1. 用手機瀏覽器開網址
 
@@ -142,6 +147,47 @@ Cara bicara saat panggilan:
 - Setelah selesai, tekan tombol mikrofon sekali lagi
 - Kalau tombolnya berubah jadi 🔇, artinya mikrofon tertutup —
   tekan sekali lagi untuk bicara
+```
+
+### 給講英文的客戶
+
+同一套流程，把下面這段貼給他就好（一樣換掉 `<>` 三處）：
+
+```
+Hi! We can talk through an automatic translator. I speak Chinese, you speak
+English — the app translates and reads it out loud. Free, no sign-up.
+
+Setup (5 minutes):
+
+1. Open this link on your phone:
+   <你的網站網址>
+   (Safari on iPhone, Chrome on Android)
+
+2. The settings page opens in Chinese. In the very first box,
+   choose "English" — the whole screen switches over immediately.
+
+3. Fill in:
+   • My account            : <客戶代號，例如 john01>
+   • Other person's account: <你的代號，例如 aicom>
+   • The language I speak  : English
+   • Database URL          : <你的 Firebase 網址>
+   (Leave the API key field empty)
+
+4. Tap the green "Save" button at the bottom.
+
+5. On the main screen, tap "Enable ringtone & alerts" and allow notifications.
+
+6. Add it to your home screen so you can receive calls:
+   • iPhone : Share button → "Add to Home Screen"  (REQUIRED)
+   • Android: three-dot menu → "Add to Home screen"
+
+Done — I'll call you. Tap the green button to answer.
+
+How to talk during a call:
+- Tap the microphone button 🎙 once to start speaking
+- Say one sentence, then pause and wait for the translation
+- Tap the microphone again when you're finished
+- If the button turns to 🔇 the mic is closed — tap once to speak again
 ```
 
 ---
@@ -239,6 +285,7 @@ Cara bicara saat panggilan:
 | 撥過去對方沒反應 | 資料庫網址不一樣 | 兩邊逐字比對，最好複製貼上 |
 | 對方收不到通知 | 沒按「啟用鈴聲」、iPhone 沒加主畫面 | 回第四節第 5、6 步 |
 | 兩個客戶會互相搶到來電 | 代號重複了 | 改其中一個的「我的帳號」 |
+| 翻成了錯的語言 | 有一邊還是舊版 | 兩邊都更新到最新版；新版才會宣告自己的語言 |
 | 客戶說看不懂畫面 | 還是中文介面 | 主畫面按左上角「ID」，或設定頁最上面那張卡片選 Bahasa Indonesia |
 | 對方的話沒唸出來 | 媒體音量關掉、或網路不通 | 先按設定頁的「試唸」測；再檢查媒體音量，見第六節「沒聲音的時候」 |
 | 一直跳出沒人撥的來電 | 上次通話的殘留狀態 | 設定頁按「清除殘留的通話狀態」 |

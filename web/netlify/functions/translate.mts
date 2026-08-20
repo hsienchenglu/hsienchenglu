@@ -14,6 +14,8 @@ const LANG_NAMES: Record<string, string> = {
   'zh-TW': 'Traditional Chinese',
   zh: 'Traditional Chinese',
   id: 'Indonesian',
+  en: 'English',
+  'en-US': 'English',
 };
 
 /** 環境變數：優先用 Netlify 執行環境注入的全域物件，本機測試時退回 process.env。 */

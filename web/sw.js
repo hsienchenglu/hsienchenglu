@@ -25,10 +25,17 @@ const TEXT = {
     generic: 'Ada panggilan masuk, buka aplikasi',
     ended: 'Panggilan sudah berakhir',
   },
+  en: {
+    app: 'ZhID Talk',
+    title: 'Incoming translated call',
+    body: '{0} is calling you \u2014 tap to answer',
+    generic: 'Incoming call \u2014 open the app to see',
+    ended: 'The call has ended',
+  },
 };
 
 const txt = (cfg, key, arg) => {
-  const dict = TEXT[(cfg && cfg.uiLang) === 'id' ? 'id' : 'zh'];
+  const dict = TEXT[(cfg && cfg.uiLang) in TEXT ? cfg.uiLang : 'zh'];
   return arg == null ? dict[key] : dict[key].replace('{0}', arg);
 };
 

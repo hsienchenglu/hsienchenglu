@@ -1,8 +1,8 @@
 /*
- * 介面語言：中文 / 印尼文。
+ * 介面語言：中文 / 印尼文 / 英文。
  *
  * 這裡只管「介面上的字」，和通話翻譯是兩回事——
- * 印尼看護把介面切成印尼文，仍然是說印尼文、聽到中文翻譯。
+ * 印尼客戶把介面切成印尼文，仍然是說印尼文、聽到自己語言的翻譯。
  *
  * 用法：
  *   HTML 靜態文字   <span data-i18n="鍵名">
@@ -17,6 +17,7 @@ const I18N = {
     app_name: '譯通',
     lang_zh: '中文',
     lang_id: '印尼文',
+    lang_en: '英文',
     lang_pair: '{0} → {1}',
     ui_lang_switched: '介面已切換成中文',
     update_prompt: '有新版本，點一下更新',
@@ -92,7 +93,7 @@ const I18N = {
     my_account_hint: '我的帳號',
     peer_account_hint: '常用對方帳號（可留空）',
     settings_lang: '我說的語言',
-    settings_lang_desc: '另一方會自動使用另一種語言。',
+    settings_lang_desc: '你講的語言。對方講什麼語言由他自己設定，接通後會自動對上。',
     settings_ui_lang: '介面語言',
     settings_ui_lang_desc: '只影響畫面上的文字，不影響通話翻譯。',
     settings_db: '連線（Firebase Realtime Database）',
@@ -155,6 +156,7 @@ const I18N = {
     app_name: 'ZhID Talk',
     lang_zh: 'Bahasa Mandarin',
     lang_id: 'Bahasa Indonesia',
+    lang_en: 'Bahasa Inggris',
     lang_pair: '{0} → {1}',
     ui_lang_switched: 'Tampilan diubah ke Bahasa Indonesia',
     update_prompt: 'Ada versi baru, ketuk untuk memperbarui',
@@ -231,7 +233,7 @@ const I18N = {
     my_account_hint: 'Akun saya',
     peer_account_hint: 'Akun lawan bicara (boleh kosong)',
     settings_lang: 'Bahasa yang saya pakai',
-    settings_lang_desc: 'Pihak lain otomatis memakai bahasa satunya.',
+    settings_lang_desc: 'Bahasa yang Anda pakai. Lawan bicara mengatur bahasanya sendiri, dan akan dicocokkan otomatis saat tersambung.',
     settings_ui_lang: 'Bahasa tampilan',
     settings_ui_lang_desc: 'Hanya mengubah tulisan di layar, tidak mempengaruhi terjemahan panggilan.',
     settings_db: 'Koneksi (Firebase Realtime Database)',
@@ -291,6 +293,144 @@ const I18N = {
     err_push_save: 'Gagal menyimpan langganan notifikasi: {0}',
     alerts_on: 'Nada dering dan notifikasi latar sudah aktif',
   },
+  en: {
+    app_name: 'ZhID Talk',
+    lang_zh: 'Chinese',
+    lang_id: 'Indonesian',
+    lang_en: 'English',
+    lang_pair: '{0} \u2192 {1}',
+    ui_lang_switched: 'Interface switched to English',
+    update_prompt: 'A new version is available \u2014 tap to update',
+
+    // 主畫面
+    my_account: 'My account: {0}',
+    no_account: 'No account set yet',
+    standby_title: 'Standby',
+    standby_offline: 'Offline \u2014 cannot receive calls',
+    standby_online: 'Online: {0}',
+    standby_reconnecting: 'Connection lost, reconnecting\u2026',
+    enable_alerts: 'Enable ringtone & alerts',
+    enabling: 'Enabling\u2026',
+    enabled: 'Enabled',
+    enable_again: 'Enable again',
+    alerts_all_on: 'Ringtone and background alerts are on',
+    alerts_ring_only: 'Ringtone on; background alerts off: {0}',
+    alerts_notify_granted: 'Notifications allowed \u2014 tap once more to confirm the push subscription',
+    alerts_ios_install: 'On iPhone, use Share \u2192 Add to Home Screen to receive calls in the background',
+    dial_title: 'Start a translated call',
+    peer_hint: "Other person's account",
+    call_button: 'Call',
+    setup_hint: 'Fill in your account and database URL in Settings first',
+    history_title: 'Call history',
+    clear_all: 'Delete all',
+    no_history: 'No calls yet',
+
+    // 來電
+    incoming_call: 'Incoming translated call',
+    accept: 'Answer',
+    reject: 'Decline',
+    speaks: 'They speak {0}',
+
+    // 通話中
+    status_calling: 'Calling\u2026',
+    status_connected: 'Connected',
+    status_translating: 'Translating\u2026',
+    no_transcript: 'Nothing has been said on this call yet',
+    mic_on_hint: 'Listening\u2026 tap the mic again when you are done',
+    mic_off_hint: 'Mic is off \u2014 tap to start speaking',
+    mic_auto_off: 'Mic closed. Tap \ud83c\udf99 to speak',
+    tap_to_replay: 'Tap to hear it again',
+    tts_test: 'Test voice',
+    tts_test_desc: 'Check that this phone can speak',
+    tts_test_sample: 'Hello, this is a voice test.',
+    tts_via_server: '\u2705 Using the online voice',
+    tts_via_builtin: '\u26a0\ufe0f Fell back to the phone voice (online voice failed)',
+    tts_via_none: '\u274c No sound at all \u2014 check the media volume',
+    end_call_q: 'End this call?',
+    call_rejected: 'They declined',
+    call_peer_hung_up: 'They hung up',
+    call_no_answer: 'No answer',
+    speak_on: 'Auto read-aloud on',
+    speak_off: 'Auto read-aloud off',
+
+    // 通話紀錄
+    call_missed: 'Missed call',
+    duration_fmt: 'Call {0}',
+    sentence_count: '{0} lines',
+    today: 'Today',
+    yesterday: 'Yesterday',
+    delete_record_q: 'Delete the call record and transcript with {0}?',
+    clear_all_q: 'Delete every call record and transcript? This cannot be undone.',
+    history_detail: 'Call transcript',
+    delete_record: 'Delete this record',
+    delete_this_q: 'Delete this call record?',
+
+    // 設定
+    settings: 'Settings',
+    back: 'Back',
+    settings_account: 'Account',
+    settings_account_desc: 'Tell the other person your account so they can call you. The two sides must use different accounts.',
+    my_account_hint: 'My account',
+    peer_account_hint: 'Usual contact (optional)',
+    settings_lang: 'The language I speak',
+    settings_lang_desc: 'The language you speak. The other side sets their own, and the two are matched automatically once connected.',
+    settings_ui_lang: 'Interface language',
+    settings_ui_lang_desc: 'Only changes the words on screen; it does not affect call translation.',
+    settings_db: 'Connection (Firebase Realtime Database)',
+    settings_db_desc: 'Both sides enter the same URL to reach each other. Shared with the Android app.',
+    db_url_hint: 'Database URL',
+    db_secret_hint: 'Database secret (leave blank with test rules)',
+    settings_translate: 'Translation service',
+    settings_translate_desc:
+      'Keep the key in a Netlify environment variable (TRANSLATE_API_KEY) so the page goes through the server proxy and the key never leaks. The field below is only a fallback when there is no proxy.',
+    api_key_hint: 'API key (fallback, stored on this device)',
+    settings_ring: 'Ringtone',
+    settings_ring_desc: 'A web page cannot use the phone ringtone, so a built-in ring sound is used and stops after the set number of rings.',
+    ring_times: 'Ring {0} times',
+    ring_test: 'Preview',
+    auto_listen: 'Open the mic automatically when connected',
+    server_tts: 'Use the online voice (sounds more natural)',
+    server_tts_desc: 'Turn this off to use the phone voice instead \u2014 no internet needed and no cost. If the online voice fails it falls back automatically.',
+    auto_speak: 'Read the other side aloud',
+    test_connection: 'Test connection & translation',
+    testing: 'Testing\u2026',
+    test_ok: 'Connection fine. Translation test: hello \u2192 {0}',
+    test_db_fail: 'Database connection failed: {0}',
+    test_tr_fail: 'Database is fine, but translation failed: {0}',
+    reset_state: 'Clear leftover call state',
+    reset_state_desc: 'If you cannot place calls, or phantom calls keep appearing, tap this to clear the stuck state. Settings and call history are not affected.',
+    reset_done: 'Cleared \u2014 you can call again',
+    reset_fail: 'Could not clear: {0}',
+    save: 'Save',
+    saved: 'Saved',
+    browser_note: 'Speech recognition needs Chrome or Edge, and the site must be HTTPS.',
+
+    // 錯誤與提示
+    err_need_peer: "Enter the other person's account",
+    err_call_self: 'You cannot call yourself',
+    err_setup_first: 'Fill in your account and database URL in Settings first',
+    err_finish_setup: 'Finish the setup first',
+    err_account_required: 'Enter your account',
+    err_db_url: 'The URL must start with https://',
+    err_dial: 'Could not place the call: {0}',
+    err_send: 'Could not send the message: {0}',
+    err_no_stt: 'This browser does not support speech recognition \u2014 use Chrome or Edge',
+    err_stt_stopped: 'Speech recognition keeps dropping, so it is paused. Tap the mic to start again',
+    err_stt_start: 'Could not start speech recognition. Tap the mic to retry',
+    err_mic_permission: 'Microphone permission is needed to speak',
+    err_tts_silent: 'The phone made no sound. Check the media volume and the text-to-speech settings',
+    err_stt_network: 'Speech recognition connection is unstable',
+    err_tts_voice: 'No {0} voice installed \u2014 the pronunciation may be off',
+    err_no_push: 'This browser does not support background push',
+    err_ios_install: 'On iPhone, use Share \u2192 Add to Home Screen, then open it from there',
+    err_no_notify_perm: 'Without notification permission you will miss calls in the background',
+    err_sw_failed: 'Service Worker registration failed',
+    err_no_vapid: 'The server has no push key (VAPID) configured',
+    err_push_key: 'Could not get the push key: {0}',
+    err_push_sub: 'Could not create the push subscription: {0}',
+    err_push_save: 'Could not save the push subscription: {0}',
+    alerts_on: 'Ringtone and background alerts enabled',
+  },
 };
 
 let UI_LANG = 'zh';
@@ -307,10 +447,17 @@ function t(key, ...args) {
   return s;
 }
 
+/** 介面語言的循環順序，也是設定頁選項的順序 */
+const UI_LANGS = ['zh', 'id', 'en'];
+const HTML_LANG = { zh: 'zh-Hant', id: 'id', en: 'en' };
+
 function setUiLang(lang) {
-  UI_LANG = lang === 'id' ? 'id' : 'zh';
-  document.documentElement.lang = UI_LANG === 'id' ? 'id' : 'zh-Hant';
+  UI_LANG = UI_LANGS.includes(lang) ? lang : 'zh';
+  document.documentElement.lang = HTML_LANG[UI_LANG];
 }
+
+/** 左上角切換鍵：回傳下一個語言 */
+const nextUiLang = (lang) => UI_LANGS[(UI_LANGS.indexOf(lang) + 1) % UI_LANGS.length];
 
 /** 把畫面上所有標了 data-i18n 的文字換掉。 */
 function applyI18n(root) {

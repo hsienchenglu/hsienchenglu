@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0E1116">
-<meta name="app-version" content="20260819-2107">
+<meta name="app-version" content="20260820-0908">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -136,9 +136,10 @@
   <div class="card">
     <div class="card-title" data-i18n="settings_ui_lang">介面語言</div>
     <div class="hint" data-i18n="settings_ui_lang_desc"></div>
-    <div class="row gap">
+    <div class="row gap wrap">
       <label class="radio"><input type="radio" name="uilang" value="zh"> 中文</label>
       <label class="radio"><input type="radio" name="uilang" value="id"> Bahasa Indonesia</label>
+      <label class="radio"><input type="radio" name="uilang" value="en"> English</label>
     </div>
   </div>
 
@@ -152,9 +153,10 @@
   <div class="card">
     <div class="card-title" data-i18n="settings_lang">我說的語言</div>
     <div class="hint" data-i18n="settings_lang_desc"></div>
-    <div class="row gap">
+    <div class="row gap wrap">
       <label class="radio"><input type="radio" name="lang" value="zh"> <span data-i18n="lang_zh">中文</span></label>
       <label class="radio"><input type="radio" name="lang" value="id"> <span data-i18n="lang_id">印尼文</span></label>
+      <label class="radio"><input type="radio" name="lang" value="en"> <span data-i18n="lang_en">英文</span></label>
     </div>
     <!-- 對方的話會用這個語言唸出來，先在這裡確認手機唸得出來 -->
     <div class="row between">

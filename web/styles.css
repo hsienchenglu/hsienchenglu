@@ -162,7 +162,9 @@ h2 { font-size: 16px; margin: 0; }
   display: inline-flex; align-items: center; gap: 7px;
   font-size: 15px; margin-top: 10px; cursor: pointer;
 }
-.radio { flex: 1; }
+/* 三個語言選項在窄螢幕上放不下一排，讓它自動換行而不是把字擠扁 */
+.row.wrap { flex-wrap: wrap; }
+.radio { flex: 1 1 auto; white-space: nowrap; }
 .check { display: flex; }
 input[type="radio"], input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; }
 .slider { width: 100%; accent-color: var(--accent); margin-top: 4px; }
