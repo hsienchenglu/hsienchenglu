@@ -589,6 +589,10 @@ const Updater = {
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+/** 一個取樣的無聲 WAV，只拿來解鎖播放權限 */
+const SILENT_CLIP =
+  'data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACA';
+
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -615,12 +619,50 @@ const Speech = {
   audioUrl: '',
   /** 已經跟伺服器要過的句子，重播不必再付一次錢 */
   ttsCache: new Map(),
+  /** 一律重複使用同一個 audio 元素——手機只認得被解鎖過的那一個 */
+  audioEl: null,
+  unlocked: false,
   /** 上一句實際上是誰唸的：server（網路語音）或 builtin（手機內建） */
   lastSource: '',
   /** 因為切到背景而暫停，回到前景要自動接回去 */
   pausedByHide: false,
 
   supported() { return !!SR; },
+
+  /**
+   * 手機瀏覽器規定聲音要由使用者的動作觸發。通話中的朗讀是網路訊息觸發的，
+   * 沒有這道解鎖就會靜靜地不出聲，而且不報錯——測試時按按鈕唸得出來、
+   * 真的通話卻沒聲音，就是這個原因。
+   *
+   * 解法是在使用者第一次點畫面時，先播一段無聲的音檔、也讓朗讀引擎動一次，
+   * 之後程式自己觸發的播放就會被允許。
+   */
+  unlock() {
+    if (this.unlocked) return;
+    this.unlocked = true;
+    try {
+      const a = this.el();
+      a.src = SILENT_CLIP;
+      const p = a.play();
+      if (p && p.catch) p.catch(() => { /* 有些瀏覽器本來就不需要解鎖 */ });
+    } catch (e) { /* 忽略 */ }
+    try {
+      if (window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance(' ');
+        u.volume = 0;
+        speechSynthesis.speak(u);
+      }
+    } catch (e) { /* 忽略 */ }
+  },
+
+  /** 同一個元素從頭用到尾，換句話只換 src。 */
+  el() {
+    if (!this.audioEl) {
+      this.audioEl = new Audio();
+      this.audioEl.preload = 'auto';
+    }
+    return this.audioEl;
+  },
 
   loadVoices() {
     if (!window.speechSynthesis) return;
@@ -818,7 +860,9 @@ const Speech = {
     if (stale()) return;
 
     const url = URL.createObjectURL(blob);
-    const a = new Audio(url);
+    const a = this.el();
+    a.onended = a.onerror = a.onloadedmetadata = null;
+    a.src = url;
     this.audio = a;
     this.audioUrl = url;
 
@@ -871,7 +915,7 @@ const Speech = {
     a.onended = a.onerror = a.onloadedmetadata = null;
     try { a.pause(); } catch (e) { /* 忽略 */ }
     if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
-    this.audio = null;
+    this.audio = null;   // 元素本身留著，解鎖狀態才不會丟掉
     this.audioUrl = '';
   },
 
@@ -1703,6 +1747,11 @@ function wire() {
       savePrefs();
       applyUiLang(radio.value);
     });
+  });
+
+  // 使用者碰畫面的第一下就解鎖音訊，之後通話中才叫得出聲音
+  ['pointerdown', 'click', 'touchend'].forEach((ev) => {
+    document.addEventListener(ev, () => Speech.unlock(), { capture: true });
   });
 
   $('btnTest').onclick = testConnection;
