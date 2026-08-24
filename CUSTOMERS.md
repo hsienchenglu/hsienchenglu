@@ -17,7 +17,7 @@
 所以「新增一位客戶」實際上只有兩件事：
 
 1. 你幫他想一個代號
-2. 你把**網址**和**資料庫網址**給他，請他填進設定
+2. 你把**網站網址**給他，請他填一下自己的代號
 
 沒有後台、不用你去哪裡按「新增使用者」。
 
@@ -47,16 +47,12 @@
 
 ## 三、新增一位客戶：你要做的
 
-只要傳兩樣東西給他：
-
-1. **網站網址**：你的 Netlify 網址（例如 `https://zhid-talk.netlify.app`）
-2. **資料庫網址**：Firebase 那一串
-   `https://xxx-default-rtdb.asia-southeast1.firebasedatabase.app`
-
-> ⚠️ 資料庫網址**兩邊一定要一模一樣**，差一個字就永遠接不到對方。
-> 建議直接複製貼上，不要用手打。
+只要傳**一個網址**給他：你的 Netlify 網址（例如 `https://zhid-talk.netlify.app`）。
 
 然後告訴他代號是什麼（例如 `sari01`），以及你的代號（`aicom`）。
+
+> 資料庫網址**已經內建在網頁裡了**，客戶不用填也不會填錯——
+> 那一格以前是最容易出問題的地方。
 
 **你這邊完全不用做設定。** 撥號時直接在撥號欄打他的代號就會通，
 不需要事先「新增」到任何地方。
@@ -80,16 +76,16 @@
 
 （之後在主畫面隨時可以用左上角的 **ID／中** 按鈕切換。）
 
-### 3. 填四個地方
+### 3. 填三個地方
 
 | 印尼文畫面上的字 | 要填什麼 |
 | --- | --- |
 | **Akun saya**（我的帳號） | 你給他的代號，例如 `sari01` |
 | **Akun lawan bicara**（對方帳號） | 你的代號，例如 `aicom` |
 | **Bahasa yang saya pakai**（我說的語言） | 選 **Bahasa Indonesia** |
-| **Alamat database**（資料庫網址） | 你給的 Firebase 網址 |
 
-翻譯服務那格**留空就好**，網頁版的金鑰放在伺服器，客戶不需要填。
+**連線和翻譯服務那兩張卡片都不用動**——資料庫網址已經內建，
+翻譯金鑰放在伺服器，客戶都不需要填。
 
 ### 4. 按最下面綠色的 **Simpan**（儲存）
 
@@ -124,12 +120,11 @@ Cara pasang (5 menit):
    Di kotak paling atas, pilih "Bahasa Indonesia" — seluruh tampilan
    langsung berubah, tidak perlu menekan apa pun dulu.
 
-3. Isi bagian ini:
+3. Isi bagian ini saja:
    • Akun saya            : <客戶代號，例如 sari01>
    • Akun lawan bicara    : <你的代號，例如 aicom>
    • Bahasa yang saya pakai : Bahasa Indonesia
-   • Alamat database      : <你的 Firebase 網址>
-   (Bagian API key dikosongkan saja)
+   (Bagian lain biarkan apa adanya)
 
 4. Tekan tombol hijau "Simpan" di paling bawah.
 
@@ -166,12 +161,11 @@ Setup (5 minutes):
 2. The settings page opens in Chinese. In the very first box,
    choose "English" — the whole screen switches over immediately.
 
-3. Fill in:
+3. Fill in just these:
    • My account            : <客戶代號，例如 john01>
    • Other person's account: <你的代號，例如 aicom>
    • The language I speak  : English
-   • Database URL          : <你的 Firebase 網址>
-   (Leave the API key field empty)
+   (Leave everything else as it is)
 
 4. Tap the green "Save" button at the bottom.
 
@@ -282,7 +276,7 @@ How to talk during a call:
 
 | 狀況 | 原因 | 處理 |
 | --- | --- | --- |
-| 撥過去對方沒反應 | 資料庫網址不一樣 | 兩邊逐字比對，最好複製貼上 |
+| 撥過去對方沒反應 | 對方沒上線，或代號打錯 | 確認對方網頁開著或已啟用推播，代號拼字要一致 |
 | 對方收不到通知 | 沒按「啟用鈴聲」、iPhone 沒加主畫面 | 回第四節第 5、6 步 |
 | 兩個客戶會互相搶到來電 | 代號重複了 | 改其中一個的「我的帳號」 |
 | 翻成了錯的語言 | 有一邊還是舊版 | 兩邊都更新到最新版；新版才會宣告自己的語言 |

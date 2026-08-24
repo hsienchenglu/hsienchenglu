@@ -40,14 +40,27 @@ const DEFAULTS = {
   ring: 2, autoListen: true, autoSpeak: true, serverTts: true,
 };
 
+/**
+ * 頁面裡可以先烙一個資料庫網址（index.html 的 default-db-url）。
+ * 兩邊網址只要差一個字就永遠接不到對方，讓使用者自己打是最容易出錯的一步，
+ * 所以預先填好。使用者仍然可以在設定頁改，改成空的就回到這個預設值。
+ */
+const BAKED_DB_URL = trimUrl(
+  (document.querySelector('meta[name="default-db-url"]') || {}).content || ''
+);
+
+function trimUrl(u) { return String(u || '').trim().replace(/\/+$/, ''); }
+
 let prefs = loadPrefs();
 
 function loadPrefs() {
+  let saved = {};
   try {
-    return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem('zhid.prefs') || '{}'));
-  } catch (e) {
-    return Object.assign({}, DEFAULTS);
-  }
+    saved = JSON.parse(localStorage.getItem('zhid.prefs') || '{}');
+  } catch (e) { /* 壞掉就當作沒有 */ }
+  const p = Object.assign({}, DEFAULTS, saved);
+  if (!p.dbUrl) p.dbUrl = BAKED_DB_URL;
+  return p;
 }
 
 function savePrefs() {
@@ -1640,7 +1653,7 @@ function fillSettings() {
 function readSettings() {
   const account = $('setAccount').value.trim();
   if (!account) { toast(t('err_account_required')); return false; }
-  const dbUrl = $('setDbUrl').value.trim().replace(/\/+$/, '');
+  const dbUrl = trimUrl($('setDbUrl').value) || BAKED_DB_URL;
   if (dbUrl && !dbUrl.startsWith('https://')) { toast(t('err_db_url')); return false; }
 
   prefs.account = account;
@@ -1688,6 +1701,7 @@ function refreshHeader() {
   $('myAccountLabel').textContent = prefs.account ? t('my_account', prefs.account) : t('no_account');
   $('myLangLabel').textContent = langLabel(prefs.lang);
   $('setupHint').classList.toggle('hidden', isConfigured());
+  $('setupHint').textContent = t(BAKED_DB_URL ? 'setup_hint_account' : 'setup_hint');
   if (prefs.peer && !$('inputPeer').value) $('inputPeer').value = prefs.peer;
 }
 

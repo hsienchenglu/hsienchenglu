@@ -90,6 +90,16 @@ https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app
 
 > ⚠️ 不要複製瀏覽器網址列的 `console.firebase.google.com/...`，那是後台頁面不是資料庫。
 
+**把這個網址烙進網頁**，使用者就不必自己填（那一格最容易打錯）。
+開 `web/index.html`，改最上面這一行：
+
+```html
+<meta name="default-db-url" content="https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app">
+```
+
+設定頁那一格仍然可以改；**改成空的就會自動回到這個內建值**。
+把 content 留空的話，行為就回到「每個人自己填」。
+
 **測試模式 30 天後會過期**，要長期使用就到「規則」分頁改成：
 
 ```json
@@ -204,7 +214,7 @@ https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app
 | --- | --- | --- |
 | 我的帳號 | `ayah` | `sari` |
 | 我說的語言 | 中文 | 印尼文（或英文） |
-| 資料庫網址 | **同一個** | **同一個** |
+| 資料庫網址 | 已內建，不用動 | 已內建，不用動 |
 | API 金鑰 | 留空（走伺服器代理） | 留空 |
 
 > 帳號**必須不同**。語言各設各的、**兩邊不一樣**就好——三種語言任意搭配都行，
@@ -240,7 +250,7 @@ adb install -r app-debug.apk
 
 | 名稱 | 放在哪裡 | 是否機密 | 用途 |
 | --- | --- | --- | --- |
-| Firebase 資料庫網址 | App 設定頁 / 網頁設定頁 | 否 | 訊令與訊息傳遞 |
+| Firebase 資料庫網址 | 網頁 index.html（內建）／App 設定頁 | 否 | 訊令與訊息傳遞 |
 | Firebase 資料庫密鑰 | App 設定頁（選填） | **是** | 繞過安全性規則 |
 | `TRANSLATE_API_KEY` | Netlify 環境變數 | **是** | 翻譯 |
 | `VAPID_PUBLIC_KEY` | Netlify 環境變數 | 否 | 建立推播訂閱 |
