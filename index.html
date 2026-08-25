@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阿嬤失智暴躁／打人時照護處理 SOP（中印雙語）</title>
+<style>
+  :root{
+    --bg:#f6f3ee;
+    --card:#ffffff;
+    --text:#2b2b2b;
+    --muted:#6b6b6b;
+    --accent:#7a5a3a;
+    --accent-soft:#efe5d9;
+    --warn:#fff4df;
+    --danger:#fde8e8;
+    --ok:#edf7ed;
+    --border:#ded7cf;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","Microsoft JhengHei",Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.7;
+  }
+  .container{
+    max-width:900px;
+    margin:0 auto;
+    padding:18px;
+  }
+  header{
+    background:linear-gradient(135deg,#7a5a3a,#9c7955);
+    color:#fff;
+    border-radius:18px;
+    padding:26px 22px;
+    margin-bottom:18px;
+  }
+  header h1{
+    margin:0 0 8px;
+    font-size:1.75rem;
+    line-height:1.35;
+  }
+  header p{
+    margin:0;
+    opacity:.92;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:20px;
+    margin:14px 0;
+    box-shadow:0 3px 12px rgba(0,0,0,.04);
+  }
+  h2{
+    margin:0 0 12px;
+    color:var(--accent);
+    font-size:1.35rem;
+    line-height:1.4;
+  }
+  h3{
+    color:var(--accent);
+    margin:18px 0 8px;
+    font-size:1.05rem;
+  }
+  .id{
+    display:block;
+    color:var(--muted);
+    font-size:.95rem;
+    margin-top:2px;
+    font-weight:500;
+  }
+  ul{
+    padding-left:1.3rem;
+  }
+  li{
+    margin:7px 0;
+  }
+  .checklist{
+    list-style:none;
+    padding-left:0;
+  }
+  .checklist li{
+    position:relative;
+    padding-left:34px;
+    margin:10px 0;
+  }
+  .checklist li::before{
+    content:"☐";
+    position:absolute;
+    left:0;
+    top:-1px;
+    font-size:1.35rem;
+    color:var(--accent);
+  }
+  .quote{
+    background:var(--accent-soft);
+    border-left:5px solid var(--accent);
+    padding:12px 14px;
+    border-radius:10px;
+    margin:10px 0;
+  }
+  .bad{
+    background:var(--danger);
+    border-radius:12px;
+    padding:12px 14px;
+  }
+  .good{
+    background:var(--ok);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-top:10px;
+  }
+  .warning{
+    background:var(--warn);
+    border-radius:12px;
+    padding:14px;
+    margin-top:12px;
+  }
+  .danger{
+    background:var(--danger);
+    border:2px solid #d65a5a;
+    border-radius:14px;
+    padding:16px;
+  }
+  .record{
+    background:#fafafa;
+    border:1px dashed #bdb5ad;
+    border-radius:12px;
+    padding:16px;
+  }
+  .line{
+    border-bottom:1px solid #999;
+    display:inline-block;
+    min-width:220px;
+    height:1.2em;
+    vertical-align:bottom;
+  }
+  .important{
+    text-align:center;
+    background:#5c4631;
+    color:white;
+    border-radius:16px;
+    padding:20px;
+    margin:18px 0 6px;
+  }
+  .important strong{
+    display:block;
+    font-size:1.2rem;
+    margin:5px 0;
+  }
+  .btnbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin:0 0 14px;
+  }
+  button{
+    border:none;
+    background:var(--accent);
+    color:#fff;
+    border-radius:10px;
+    padding:10px 15px;
+    font-size:1rem;
+    cursor:pointer;
+  }
+  button.secondary{
+    background:#6b6b6b;
+  }
+  footer{
+    text-align:center;
+    color:var(--muted);
+    font-size:.9rem;
+    padding:16px 0 24px;
+  }
+  @media (max-width:600px){
+    .container{padding:10px}
+    header{padding:20px 16px;border-radius:14px}
+    header h1{font-size:1.45rem}
+    .card{padding:16px;border-radius:13px}
+    h2{font-size:1.2rem}
+  }
+
+  .form-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .field{
+    margin:12px 0;
+  }
+  .field label{
+    display:block;
+    font-weight:700;
+    margin-bottom:6px;
+    color:var(--text);
+  }
+  .field .sub{
+    display:block;
+    font-size:.9rem;
+    color:var(--muted);
+    font-weight:500;
+    margin-top:1px;
+  }
+  input[type="text"],
+  input[type="datetime-local"],
+  input[type="number"],
+  textarea{
+    width:100%;
+    min-height:44px;
+    padding:10px 12px;
+    border:1px solid #aaa39b;
+    border-radius:9px;
+    background:#fff;
+    color:#222;
+    font:inherit;
+  }
+  textarea{
+    min-height:90px;
+    resize:vertical;
+  }
+  .option-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px 14px;
+    margin-top:8px;
+  }
+  .option-grid label{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    font-weight:500;
+  }
+  .option-grid input{
+    width:20px;
+    height:20px;
+    margin-top:3px;
+    flex:0 0 auto;
+  }
+  .form-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:16px;
+  }
+  .save-status{
+    color:var(--muted);
+    font-size:.9rem;
+    align-self:center;
+  }
+  @media (max-width:600px){
+    .form-grid{grid-template-columns:1fr}
+    .option-grid{grid-template-columns:1fr}
+  }
+
+
+  .bilingual-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 16px}
+  .lang-box{min-width:0}
+  .lang-title{display:block;font-weight:800;margin-bottom:6px}
+  .lang-title small{display:block;color:var(--muted);font-weight:600;font-size:.86rem}
+  .translate-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0 4px}
+  .translate-note{font-size:.88rem;color:var(--muted)}
+  @media (max-width:700px){.bilingual-pair{grid-template-columns:1fr}}
+
+  @media print{
+    body{background:#fff}
+    .container{max-width:none;padding:0}
+    .btnbar{display:none}
+    header,.card,.important{box-shadow:none;break-inside:avoid}
+    .card{border-color:#bbb}
+    header{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .danger,.warning,.good,.bad,.quote,.important{
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+  }
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#7a5a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="阿嬤照護SOP">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>阿嬤失智暴躁／打人時照護處理 SOP</h1>
+    <p>中印雙語版｜適用：90歲失智長輩｜給印尼看護使用</p>
+  </header>
+
+  
+<div class="card" id="pwa-install-note">
+  <h2>加入手機主畫面 <span class="id">Tambahkan ke layar utama</span></h2>
+  <p><b>Android Chrome：</b>開啟瀏覽器選單 →「安裝應用程式」或「加入主畫面」。</p>
+  <p><b>iPhone Safari：</b>點「分享」→「加入主畫面」。</p>
+  <p class="id">Android Chrome: Menu → Install app / Add to Home screen.<br>
+  iPhone Safari: Share → Add to Home Screen.</p>
+</div>
+
+<div class="btnbar">
+    <button onclick="window.print()">列印 / 儲存 PDF</button>
+    <button class="secondary" onclick="window.scrollTo({top:0,behavior:'smooth'})">回到最上方</button>
+  </div>
+
+  <section class="card">
+    <h2>一、阿嬤開始生氣、罵人或要打人時
+      <span class="id">Saat Nenek mulai marah, memaki, atau ingin memukul</span>
+    </h2>
+    <ul class="checklist">
+      <li><b>先停止正在做的事情，不要勉強阿嬤。</b><br>Hentikan dulu kegiatan yang sedang dilakukan. Jangan memaksa Nenek.</li>
+      <li><b>保持距離，不要站得太近。</b><br>Jaga jarak agar tetap aman.</li>
+      <li><b>不要抓住阿嬤、不要跟她對抗。</b><br>Jangan memegang atau melawan Nenek dengan paksa.</li>
+      <li><b>不要大聲罵她，也不要一直講道理。</b><br>Jangan membentak dan jangan berdebat panjang.</li>
+      <li><b>用慢慢、溫和的聲音說話。</b><br>Bicara perlahan dan dengan suara lembut.</li>
+    </ul>
+
+    <h3>可以說：</h3>
+    <div class="quote">
+      <b>中文：</b><br>
+      「阿嬤，好，我知道。」<br>
+      「阿嬤，不要急，我陪妳。」<br>
+      「我們先休息一下。」<br>
+      「等一下我陪妳出去走走。」
+    </div>
+    <div class="quote">
+      <b>印尼文：</b><br>
+      “Nenek, iya, saya tahu.”<br>
+      “Nenek, jangan khawatir, saya menemani Nenek.”<br>
+      “Kita istirahat dulu.”<br>
+      “Nanti saya temani Nenek jalan sebentar.”
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>二、阿嬤說「我被關起來」、「我要回家」時
+      <span class="id">Saat Nenek berkata “Saya dikurung” atau “Saya mau pulang”</span>
+    </h2>
+
+    <div class="bad">
+      <b>不要這樣回答：</b><br>
+      ❌「妳沒有被關！」<br>
+      ❌「這裡就是妳家！」<br>
+      ❌「妳失智了，不要亂講！」
+    </div>
+
+    <div class="good">
+      <b>改成這樣回答：</b><br>
+      「阿嬤，我知道妳想出去。」<br>
+      「沒關係，我陪妳。」<br>
+      「我們先坐一下，等等出去走走。」<br><br>
+      <b>印尼文：</b><br>
+      “Nenek, saya tahu Nenek ingin keluar.”<br>
+      “Tidak apa-apa, saya menemani Nenek.”<br>
+      “Kita duduk dulu, nanti kita jalan sebentar.”
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>三、如果洗澡、換衣服或換尿布時要打人
+      <span class="id">Jika Nenek memukul saat mandi, ganti baju, atau ganti popok</span>
+    </h2>
+    <ul class="checklist">
+      <li>馬上停止，不要硬做。<br>Segera berhenti, jangan dipaksa.</li>
+      <li>先讓阿嬤休息。<br>Biarkan Nenek tenang dulu.</li>
+      <li>過30～60分鐘再試一次。<br>Coba lagi setelah 30–60 menit.</li>
+      <li>每做一件事情之前先告訴她。<br>Beritahu Nenek sebelum melakukan sesuatu.</li>
+    </ul>
+
+    <div class="quote">
+      <b>中文：</b><br>
+      「阿嬤，我現在幫妳換衣服。」<br>
+      「阿嬤，我幫妳洗手。」<br><br>
+      <b>印尼文：</b><br>
+      “Nenek, sekarang saya bantu ganti baju.”<br>
+      “Nenek, saya bantu cuci tangan.”
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>四、每天注意可能讓阿嬤生氣的原因</h2>
+    <ul class="checklist">
+      <li>肚子餓嗎？<br>Apakah Nenek lapar?</li>
+      <li>口渴嗎？<br>Apakah Nenek haus?</li>
+      <li>想尿尿嗎？<br>Apakah Nenek ingin buang air kecil?</li>
+      <li>很久沒有大便嗎？<br>Apakah sudah lama tidak buang air besar?</li>
+      <li>身體哪裡痛嗎？<br>Apakah ada bagian tubuh yang sakit?</li>
+      <li>太累、沒睡好嗎？<br>Apakah Nenek lelah atau kurang tidur?</li>
+      <li>房間太熱、太冷或太吵嗎？<br>Apakah terlalu panas, dingin, atau berisik?</li>
+      <li>是不是很想出去走走？<br>Apakah Nenek ingin keluar atau jalan-jalan?</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>五、轉移阿嬤注意力的方法</h2>
+    <ul class="checklist">
+      <li>陪她到門口或院子走走。<br>Temani Nenek berjalan sebentar.</li>
+      <li>曬太陽5～10分鐘。<br>Berjemur 5–10 menit.</li>
+      <li>給她喝水。<br>Berikan air minum.</li>
+      <li>吃一點喜歡的點心。<br>Berikan makanan kecil yang disukai.</li>
+      <li>聽以前喜歡的歌曲。<br>Dengarkan musik yang disukai Nenek.</li>
+      <li>看家人的舊照片。<br>Lihat foto keluarga.</li>
+      <li>摺毛巾或整理簡單物品。<br>Lipat handuk atau lakukan pekerjaan ringan.</li>
+      <li>打電話給家人。<br>Telepon keluarga.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="record-section">
+    <h2>六、發生打人或暴躁後要記錄
+      <span class="id">6. Catat setelah Nenek marah, memukul, atau bersikap agresif</span>
+    </h2>
+
+    <div class="record">
+      <div class="field">
+        <label for="record-time">日期／時間<span class="sub">Tanggal / Waktu</span></label>
+        <input id="record-time" type="datetime-local">
+      </div>
+
+      <div class="field">
+        <label>發生什麼事？ <span class="sub">Apa yang terjadi?</span></label>
+        <div class="bilingual-pair">
+          <div class="lang-box">
+            <span class="lang-title">印尼文原文 <small>Bahasa Indonesia</small></span>
+            <textarea id="what-id" placeholder="Tuliskan apa yang terjadi"></textarea>
+          </div>
+          <div class="lang-box">
+            <span class="lang-title">中文翻譯 <small>Terjemahan Mandarin</small></span>
+            <textarea id="what-zh" placeholder="中文翻譯會顯示在這裡"></textarea>
+          </div>
+        </div>
+        <div class="translate-row"><button type="button" class="translate-btn" data-source="what-id" data-target="what-zh">轉成中文 / Terjemahkan</button></div>
+      </div>
+
+      <div class="field">
+        <label>當時正在做什麼？ <span class="sub">Apa yang sedang dilakukan sebelum kejadian?</span></label>
+        <div class="bilingual-pair">
+          <div class="lang-box">
+            <span class="lang-title">印尼文原文 <small>Bahasa Indonesia</small></span>
+            <textarea id="before-id" placeholder="Contoh: mandi, ganti baju, makan"></textarea>
+          </div>
+          <div class="lang-box">
+            <span class="lang-title">中文翻譯 <small>Terjemahan Mandarin</small></span>
+            <textarea id="before-zh" placeholder="例如：洗澡、換衣服、吃飯"></textarea>
+          </div>
+        </div>
+        <div class="translate-row"><button type="button" class="translate-btn" data-source="before-id" data-target="before-zh">轉成中文 / Terjemahkan</button></div>
+      </div>
+
+      <div class="field">
+        <label>阿嬤的反應 <span class="sub">Reaksi Nenek</span></label>
+        <div class="option-grid">
+          <label><input type="checkbox" name="reaction">罵人 / Memaki</label>
+          <label><input type="checkbox" name="reaction">推人 / Mendorong</label>
+          <label><input type="checkbox" name="reaction">打人 / Memukul</label>
+          <label><input type="checkbox" name="reaction">抓人 / Mencakar atau mencengkeram</label>
+          <label><input type="checkbox" name="reaction">丟東西 / Melempar barang</label>
+          <label><input type="checkbox" name="reaction">一直說要回家 / Terus berkata ingin pulang</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>其他反應 <span class="sub">Reaksi lainnya</span></label>
+        <div class="bilingual-pair">
+          <div class="lang-box">
+            <span class="lang-title">印尼文原文 <small>Bahasa Indonesia</small></span>
+            <input id="reaction-other-id" type="text" placeholder="Tuliskan reaksi lainnya">
+          </div>
+          <div class="lang-box">
+            <span class="lang-title">中文翻譯 <small>Terjemahan Mandarin</small></span>
+            <input id="reaction-other-zh" type="text" placeholder="其他反應的中文翻譯">
+          </div>
+        </div>
+        <div class="translate-row"><button type="button" class="translate-btn" data-source="reaction-other-id" data-target="reaction-other-zh">轉成中文 / Terjemahkan</button></div>
+      </div>
+
+      <div class="field">
+        <label>當天有沒有以下情況？ <span class="sub">Apakah pada hari itu ada kondisi berikut?</span></label>
+        <div class="option-grid">
+          <label><input type="checkbox" name="condition">沒睡好 / Kurang tidur</label>
+          <label><input type="checkbox" name="condition">沒大便 / Belum buang air besar</label>
+          <label><input type="checkbox" name="condition">吃得少 / Makan sedikit</label>
+          <label><input type="checkbox" name="condition">喝水少 / Minum sedikit</label>
+          <label><input type="checkbox" name="condition">疼痛 / Sakit atau nyeri</label>
+          <label><input type="checkbox" name="condition">發燒 / Demam</label>
+          <label><input type="checkbox" name="condition">跌倒 / Jatuh</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>其他狀況 <span class="sub">Kondisi lainnya</span></label>
+        <div class="bilingual-pair">
+          <div class="lang-box">
+            <span class="lang-title">印尼文原文 <small>Bahasa Indonesia</small></span>
+            <input id="condition-other-id" type="text" placeholder="Tuliskan kondisi lainnya">
+          </div>
+          <div class="lang-box">
+            <span class="lang-title">中文翻譯 <small>Terjemahan Mandarin</small></span>
+            <input id="condition-other-zh" type="text" placeholder="其他狀況的中文翻譯">
+          </div>
+        </div>
+        <div class="translate-row"><button type="button" class="translate-btn" data-source="condition-other-id" data-target="condition-other-zh">轉成中文 / Terjemahkan</button></div>
+      </div>
+
+      <div class="field">
+        <label>看護怎麼處理？結果如何？ <span class="sub">Apa yang dilakukan pengasuh? Bagaimana hasilnya?</span></label>
+        <div class="bilingual-pair">
+          <div class="lang-box">
+            <span class="lang-title">印尼文原文 <small>Bahasa Indonesia</small></span>
+            <textarea id="action-id" placeholder="Contoh: berhenti mandi, biarkan Nenek istirahat"></textarea>
+          </div>
+          <div class="lang-box">
+            <span class="lang-title">中文翻譯 <small>Terjemahan Mandarin</small></span>
+            <textarea id="action-zh" placeholder="例如：停止洗澡，先讓阿嬤休息"></textarea>
+          </div>
+        </div>
+        <div class="translate-row">
+          <button type="button" class="translate-btn" data-source="action-id" data-target="action-zh">轉成中文 / Terjemahkan</button>
+          <span class="translate-note" id="translate-note">印尼文原文會保留，中文翻譯顯示在旁邊。</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>大約多久恢復平靜？ <span class="sub">Berapa lama sampai Nenek tenang kembali?</span></label>
+        <div class="bilingual-pair">
+          <div class="lang-box">
+            <span class="lang-title">印尼文原文 <small>Bahasa Indonesia</small></span>
+            <input id="calm-id" type="text" placeholder="Contoh: 20 menit">
+          </div>
+          <div class="lang-box">
+            <span class="lang-title">中文翻譯 <small>Terjemahan Mandarin</small></span>
+            <input id="calm-zh" type="text" placeholder="例如：20分鐘">
+          </div>
+        </div>
+        <div class="translate-row"><button type="button" class="translate-btn" data-source="calm-id" data-target="calm-zh">轉成中文 / Terjemahkan</button></div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" id="save-record">儲存本次紀錄 / Simpan Catatan</button>
+        <button type="button" class="secondary" id="clear-record">清除輸入 / Hapus Isian</button>
+        <span class="save-status" id="save-status" aria-live="polite"></span>
+      </div>
+    </div>
+  </section>
+
+<section class="card">
+    <h2>七、這些情況要馬上通知家人</h2>
+    <div class="warning">
+      <ul class="checklist">
+        <li>打人比以前明顯增加。</li>
+        <li>一天發生很多次。</li>
+        <li>完全不吃、不喝。</li>
+        <li>發燒或身體不舒服。</li>
+        <li>突然很嗜睡或叫不太醒。</li>
+        <li>突然走不動。</li>
+        <li>跌倒或撞到頭。</li>
+        <li>身體出現新的傷口。</li>
+        <li>看護已經無法安全照顧。</li>
+      </ul>
+      <b>印尼文：</b><br>
+      Jika kondisi di atas terjadi, segera hubungi keluarga.
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>八、危險情況</h2>
+    <div class="danger">
+      <b>如果阿嬤：</b>
+      <ul>
+        <li>拿刀、剪刀、拐杖或重物攻擊。</li>
+        <li>持續猛烈打人。</li>
+        <li>看護本人已經有受傷危險。</li>
+      </ul>
+
+      <h3>處理方式</h3>
+      <ol>
+        <li><b>先離開阿嬤手能碰到的位置。</b></li>
+        <li><b>把危險物品移開，但不要和阿嬤搶奪。</b></li>
+        <li><b>立即通知家人。</b></li>
+        <li><b>有立即危險或嚴重受傷時，撥打119。</b></li>
+      </ol>
+
+      <h3>Bahasa Indonesia</h3>
+      <ol>
+        <li>Jauhkan diri dari jangkauan Nenek.</li>
+        <li>Jauhkan benda berbahaya jika aman dilakukan.</li>
+        <li>Segera hubungi keluarga.</li>
+        <li>Jika ada bahaya serius atau cedera berat, telepon <b>119</b>.</li>
+      </ol>
+    </div>
+  </section>
+
+  <div class="important">
+    <strong>最重要的照護原則</strong>
+    <strong>不爭辯、不硬拉、不強迫。</strong>
+    <strong>先讓阿嬤安全、平靜，再處理事情。</strong>
+    <br>
+    Jangan berdebat. Jangan memaksa. Jangan menarik dengan kasar.<br>
+    Utamakan keselamatan dan ketenangan Nenek.
+  </div>
+
+  <footer>
+    家庭照護用｜中印雙語版
+  </footer>
+
+</div>
+
+
+<script>
+(function(){
+ const root=document.getElementById('record-section'); if(!root)return;
+ const fields=[...root.querySelectorAll('input,textarea')];
+ const status=document.getElementById('save-status');
+ const key='aicom_grandma_behavior_record_v3';
+
+ async function translateText(text){
+   if(!text.trim()) return '';
+   const res = await fetch('/.netlify/functions/translate', {
+     method: 'POST',
+     headers: {'Content-Type':'application/json'},
+     body: JSON.stringify({text:text, sourceLanguage:'id', targetLanguage:'zh-Hant'})
+   });
+   let data = {};
+   try { data = await res.json(); } catch(e) {}
+   if(!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+   if(!data.translated || !String(data.translated).trim()) throw new Error('翻譯結果為空');
+   return String(data.translated).trim();
+ }
+
+ root.querySelectorAll('.translate-btn').forEach(btn=>{
+   btn.addEventListener('click',async()=>{
+     const src=document.getElementById(btn.dataset.source);
+     const dst=document.getElementById(btn.dataset.target);
+     if(!src.value.trim()){status.textContent='請先輸入印尼文 / Silakan isi Bahasa Indonesia dahulu';return;}
+     const old=btn.textContent; btn.disabled=true; btn.textContent='翻譯中… / Menerjemahkan…';
+     try{
+       dst.value=await translateText(src.value);
+       status.textContent='已翻成中文，印尼文原文已保留 / Terjemahan selesai';
+     }catch(e){
+       status.textContent='翻譯失敗，請確認網路或網站翻譯服務設定。';
+     }finally{btn.disabled=false;btn.textContent=old;}
+   });
+ });
+
+ document.getElementById('save-record').addEventListener('click',()=>{
+   const data={};
+   fields.forEach((el,i)=>{const k=el.id||((el.name||'field')+'_'+i);data[k]=el.type==='checkbox'?el.checked:el.value;});
+   try{localStorage.setItem(key,JSON.stringify(data));status.textContent='已儲存於此裝置 / Tersimpan di perangkat ini';}
+   catch(e){status.textContent='無法自動儲存，但仍可輸入及列印';}
+ });
+
+ document.getElementById('clear-record').addEventListener('click',()=>{
+   fields.forEach(el=>el.type==='checkbox'?(el.checked=false):(el.value=''));
+   try{localStorage.removeItem(key)}catch(e){}
+   status.textContent='已清除 / Sudah dihapus';
+ });
+
+ try{
+   const saved=JSON.parse(localStorage.getItem(key)||'null');
+   if(saved)fields.forEach((el,i)=>{const k=el.id||((el.name||'field')+'_'+i);if(k in saved){if(el.type==='checkbox')el.checked=!!saved[k];else el.value=saved[k]||'';}});
+ }catch(e){}
+})();
+</script>
+
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "阿嬤失智照護 SOP",
+  "short_name": "阿嬤照護SOP",
+  "description": "阿嬤失智暴躁／打人照護處理 SOP，中印雙語紀錄工具。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f3ee",
+  "theme_color": "#7a5a3a",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
