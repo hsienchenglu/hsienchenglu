@@ -1675,6 +1675,7 @@ function fillSettings() {
   document.querySelector(`input[name="provider"][value="${prefs.provider}"]`).checked = true;
   document.querySelector(`input[name="uilang"][value="${UI_LANG}"]`).checked = true;
   $('testResult').textContent = '';
+  $('versionLabel').textContent = t('version_label', Updater.baked || '—');
 }
 
 function readSettings() {
@@ -1765,7 +1766,16 @@ async function testConnection() {
 
 function wire() {
   $('btnSettings').onclick = () => { fillSettings(); showScreen('screenSettings'); };
-  $('btnSettingsBack').onclick = () => { showScreen('screenMain'); };
+  /*
+   * 返回時也存一次。使用者改完設定按返回是很自然的動作，
+   * 沒存到就等於白改。帳號沒填之類的情況存不起來，那就直接離開，
+   * 主畫面本來就會提示要去設定。
+   */
+  $('btnSettingsBack').onclick = () => {
+    readSettings();          // 存不起來（例如帳號沒填）就算了，主畫面會提示
+    Push.saveConfig();
+    showScreen('screenMain');
+  };
   $('btnSave').onclick = () => {
     if (!readSettings()) return;
     toast(t('saved'));
@@ -1811,6 +1821,21 @@ function wire() {
    * 第一次開網頁會直接停在設定頁，而主畫面的 ID 切換鍵這時候看不到；
    * 若要按了儲存才生效，看不懂中文的人根本找不到儲存鍵在哪。
    */
+  /*
+   * 「我說的語言」也改成選了就存。原本這格要按儲存才算數，但同一頁的
+   * 介面語言卻是即時生效——使用者改完直接按左上角返回，改的東西就沒了。
+   * 同一頁兩種行為一定會出事。
+   */
+  document.querySelectorAll('input[name="lang"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      prefs.lang = radio.value;
+      savePrefs();
+      refreshHeader();
+      Push.saveConfig();
+    });
+  });
+
   document.querySelectorAll('input[name="uilang"]').forEach((radio) => {
     radio.addEventListener('change', () => {
       if (!radio.checked) return;

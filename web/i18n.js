@@ -126,6 +126,7 @@ const I18N = {
     save: '儲存',
     saved: '已儲存',
     browser_note: '語音辨識需要 Chrome／Edge，且網站必須是 HTTPS。',
+    version_label: '版本 {0}',
 
     // 錯誤與提示
     err_need_peer: '請輸入對方帳號',
@@ -270,6 +271,7 @@ const I18N = {
     save: 'Simpan',
     saved: 'Tersimpan',
     browser_note: 'Pengenalan suara memerlukan Chrome atau Edge, dan situs harus HTTPS.',
+    version_label: 'Versi {0}',
 
     // Pesan kesalahan
     err_need_peer: 'Masukkan akun lawan bicara',
@@ -410,6 +412,7 @@ const I18N = {
     save: 'Save',
     saved: 'Saved',
     browser_note: 'Speech recognition needs Chrome or Edge, and the site must be HTTPS.',
+    version_label: 'Version {0}',
 
     // 錯誤與提示
     err_need_peer: "Enter the other person's account",

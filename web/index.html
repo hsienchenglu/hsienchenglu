@@ -8,7 +8,7 @@
      留空的話行為照舊，由每個人自己在設定頁填。 -->
 <meta name="default-db-url"
       content="https://zhid-talk-default-rtdb.asia-southeast1.firebasedatabase.app">
-<meta name="app-version" content="20260828-2140">
+<meta name="app-version" content="20260828-2216">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -215,7 +215,9 @@
   <div class="hint" data-i18n="reset_state_desc"></div>
 
   <button id="btnSave" class="btn primary block mt" data-i18n="save">儲存</button>
-  <div class="hint center mb" data-i18n="browser_note"></div>
+  <div class="hint center" data-i18n="browser_note"></div>
+  <!-- 出問題時第一件要問的就是「你現在是哪一版」，直接顯示出來 -->
+  <div id="versionLabel" class="hint center mb"></div>
 </section>
 
 <!-- 偵測到新版本時才出現，整條都可以點 -->
