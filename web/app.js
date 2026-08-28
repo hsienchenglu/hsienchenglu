@@ -1732,7 +1732,9 @@ function applyUiLang(lang) {
 
 function refreshHeader() {
   $('myAccountLabel').textContent = prefs.account ? t('my_account', prefs.account) : t('no_account');
-  $('myLangLabel').textContent = langLabel(prefs.lang);
+  // 一定要有標籤。只寫語言名的話會被當成「介面語言」，
+  // 實測就有人以為介面是英文卻顯示 Chinese 是壞掉了。
+  $('myLangLabel').textContent = t('my_lang', langLabel(prefs.lang));
   $('setupHint').classList.toggle('hidden', isConfigured());
   $('setupHint').textContent = t(BAKED_DB_URL ? 'setup_hint_account' : 'setup_hint');
   if (prefs.peer && !$('inputPeer').value) $('inputPeer').value = prefs.peer;

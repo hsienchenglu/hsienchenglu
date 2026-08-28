@@ -24,6 +24,7 @@ const I18N = {
 
     // 主畫面
     my_account: '我的帳號：{0}',
+    my_lang: '我說：{0}',
     no_account: '尚未設定帳號',
     standby_title: '待機狀態',
     standby_offline: '尚未上線，接不到來電',
@@ -164,6 +165,7 @@ const I18N = {
 
     // Layar utama
     my_account: 'Akun saya: {0}',
+    my_lang: 'Saya bicara: {0}',
     no_account: 'Akun belum diatur',
     standby_title: 'Status siaga',
     standby_offline: 'Belum online, panggilan tidak akan masuk',
@@ -306,6 +308,7 @@ const I18N = {
 
     // 主畫面
     my_account: 'My account: {0}',
+    my_lang: 'I speak: {0}',
     no_account: 'No account set yet',
     standby_title: 'Standby',
     standby_offline: 'Offline \u2014 cannot receive calls',
