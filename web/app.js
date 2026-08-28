@@ -1288,6 +1288,33 @@ const Standby = {
     notifyIncoming(p.from);
   },
 
+  /**
+   * 待機卡片上那行推播狀態。存的是「哪一句」而不是當下的文字，
+   * 不然切換介面語言之後那一行會停在舊語言——實測就出現過中文畫面
+   * 配一行英文的狀況。
+   */
+  pushNote: null,
+  /** 待機按鈕目前該顯示哪一句（啟用／啟用中／已啟用／重新啟用） */
+  alertsBtnKey: 'enable_alerts',
+
+  setPushNote(key, arg, accent) {
+    this.pushNote = key ? { key, arg, accent: !!accent } : null;
+    this.renderPushNote();
+  },
+
+  setAlertsBtn(key) {
+    this.alertsBtnKey = key;
+    $('btnStandby').textContent = t(key);
+  },
+
+  renderPushNote() {
+    const el = $('standbyPush');
+    if (!this.pushNote) { el.textContent = ''; el.className = 'sub'; return; }
+    const { key, arg, accent } = this.pushNote;
+    el.textContent = arg == null ? t(key) : t(key, arg);
+    el.className = accent ? 'sub accent' : 'sub';
+  },
+
   hideIncoming() {
     Ringer.stop();
     closeNotification();
@@ -1688,6 +1715,8 @@ function applyUiLang(lang) {
   $('standbyState').textContent = Standby.stream
     ? t('standby_online', prefs.account)
     : t('standby_offline');
+  Standby.renderPushNote();
+  Standby.setAlertsBtn(Standby.alertsBtnKey);
   Call.micUI(Speech.want);
 
   if (Call.active) {
@@ -1812,19 +1841,17 @@ function wire() {
 
     const btn = $('btnStandby');
     btn.disabled = true;
-    btn.textContent = t('enabling');
+    Standby.setAlertsBtn('enabling');
     const result = await Push.enable();
     btn.disabled = false;
 
     if (result.ok) {
-      btn.textContent = t('enabled');
-      $('standbyPush').textContent = t('alerts_all_on');
-      $('standbyPush').className = 'sub accent';
+      Standby.setAlertsBtn('enabled');
+      Standby.setPushNote('alerts_all_on', null, true);
       toast(t('alerts_on'));
     } else {
-      btn.textContent = t('enable_again');
-      $('standbyPush').textContent = t('alerts_ring_only', result.reason);
-      $('standbyPush').className = 'sub';
+      Standby.setAlertsBtn('enable_again');
+      Standby.setPushNote('alerts_ring_only', result.reason);
       toast(result.reason);
     }
   };
@@ -1942,9 +1969,9 @@ function init() {
     toast(t('err_no_stt'));
   }
   if (Push.supported() && Notification.permission === 'granted') {
-    $('standbyPush').textContent = t('alerts_notify_granted');
+    Standby.setPushNote('alerts_notify_granted');
   } else if (Push.needsInstallOnIos()) {
-    $('standbyPush').textContent = t('alerts_ios_install');
+    Standby.setPushNote('alerts_ios_install');
   }
 }
 
