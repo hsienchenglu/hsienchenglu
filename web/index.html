@@ -8,7 +8,7 @@
      留空的話行為照舊，由每個人自己在設定頁填。 -->
 <meta name="default-db-url"
       content="https://zhid-talk-default-rtdb.asia-southeast1.firebasedatabase.app">
-<meta name="app-version" content="20260828-2109">
+<meta name="app-version" content="20260828-2125">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -24,7 +24,13 @@
 <section id="screenMain" class="screen active">
   <header class="topbar topbar-main">
     <!-- 介面語言切換：顯示的是「切過去會變成的語言」 -->
-    <button id="btnUiLang" class="lang-btn" data-i18n-title="settings_ui_lang">ID</button>
+    <button id="btnUiLang" class="lang-btn" data-i18n-title="settings_ui_lang">中</button>
+    <!-- 三種語言用「按一下換下一個」講不清楚現在是哪一種，改成跳選單 -->
+    <div id="langMenu" class="lang-menu hidden">
+      <button type="button" data-lang="zh">中文</button>
+      <button type="button" data-lang="id">Bahasa Indonesia</button>
+      <button type="button" data-lang="en">English</button>
+    </div>
 
     <div class="brand">
       <h1 data-i18n="app_name">譯通</h1>

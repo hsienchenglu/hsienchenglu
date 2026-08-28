@@ -310,3 +310,35 @@ code {
 /* 可以點來重聽的訊息，給一點按得下去的暗示 */
 .bubble.speakable { cursor: pointer; }
 .bubble.speakable:active { filter: brightness(1.15); }
+
+/* 介面語言選單：點左上角的鍵才出現，直接看得到目前是哪一種 */
+.lang-menu {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  z-index: 70;
+  background: var(--surface-high);
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  min-width: 180px;
+  text-align: left;
+}
+.lang-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 15px;
+  padding: 11px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.lang-menu button:active { background: var(--outline); }
+/* 目前這一個前面打勾，後面那組空白讓三個選項對齊 */
+.lang-menu button.on { color: var(--accent); font-weight: 700; }
+.lang-menu button::before { content: '\2007\2007'; }
+.lang-menu button.on::before { content: '\2713\2007'; }

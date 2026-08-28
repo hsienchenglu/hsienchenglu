@@ -1707,7 +1707,11 @@ function readSettings() {
 function applyUiLang(lang) {
   setUiLang(lang || prefs.lang || 'zh');
   applyI18n();
-  $('btnUiLang').textContent = { zh: 'ID', id: 'EN', en: '中' }[UI_LANG];
+  // 顯示「目前」的語言，不是下一個
+  $('btnUiLang').textContent = { zh: '中', id: 'ID', en: 'EN' }[UI_LANG];
+  $('langMenu').querySelectorAll('button[data-lang]').forEach((b) => {
+    b.classList.toggle('on', b.dataset.lang === UI_LANG);
+  });
 
   refreshHeader();
   History.render();
@@ -1770,13 +1774,35 @@ function wire() {
   };
   $('updateBar').onclick = () => Updater.apply();
 
-  $('btnUiLang').onclick = () => {
-    const next = nextUiLang(UI_LANG);
-    prefs.uiLang = next;
-    savePrefs();
-    applyUiLang(next);
-    toast(t('ui_lang_switched'));
+  /*
+   * 語言鍵改成跳選單。原本是「按一下換下一個」，鍵上顯示的是「下一個語言」，
+   * 使用者會讀成「現在是這個語言」——三種語言之後這個誤解一定會發生。
+   * 現在鍵上顯示的是「目前的語言」，點開就看得到三個選項和打勾的那個。
+   */
+  const langMenu = $('langMenu');
+  const closeLangMenu = () => langMenu.classList.add('hidden');
+
+  $('btnUiLang').onclick = (e) => {
+    e.stopPropagation();
+    langMenu.classList.toggle('hidden');
   };
+
+  langMenu.querySelectorAll('button[data-lang]').forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      closeLangMenu();
+      const next = btn.dataset.lang;
+      if (next === UI_LANG) return;
+      prefs.uiLang = next;
+      savePrefs();
+      applyUiLang(next);
+      toast(t('ui_lang_switched'));
+    };
+  });
+
+  // 點畫面其他地方就收起來
+  document.addEventListener('click', closeLangMenu);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLangMenu(); });
 
   /*
    * 設定頁的介面語言要「選了就馬上換」。
