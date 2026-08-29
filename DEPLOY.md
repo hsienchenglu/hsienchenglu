@@ -153,6 +153,62 @@ https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app
 > version.json」比對，不一樣才會跳出「有新版本，點一下更新」。
 > 忘了跑這個指令，兩邊永遠相同，使用者手上就會一直停在舊版而不自知。
 
+### 步驟 3b：改成從 GitHub 自動部署（建議，取代拖曳）
+
+拖曳有兩個固定的麻煩：每次都要記得把 `logo.png` 放進 `web/`，
+而且沒有任何紀錄可以回溯「線上這一版到底是哪一份程式碼」。
+連結 GitHub 之後 `git push` 就會自動部署，兩個問題一起解決。
+
+**順序不能錯。** repo 落後幾個 commit 的話，連上去會直接把線上版
+退回舊程式碼——先推、再連。
+
+1. **先把所有 commit 推上去**，確認 GitHub 上的程式碼是最新的：
+
+   ```
+   git log --oneline -1                 # 記住這個編號
+   git push aicom <分支>:main
+   ```
+
+2. **把 `logo.png` 加進 repo**。它一直不在 repo 裡，所以拖曳部署時
+   每次都要手動放。改成 git 部署之後，**不在 repo 裡就永遠不會出現**：
+
+   ```
+   git add web/logo.png
+   git commit -m "加入 logo"
+   git push aicom <分支>:main
+   ```
+
+3. Netlify 後台 → **Site configuration → Build & deploy →
+   Continuous deployment → Link repository** → 選 GitHub → 選 repo → 分支 `main`。
+
+4. **建置設定三格全部留空**：
+
+   | 欄位 | 填什麼 |
+   | --- | --- |
+   | Base directory | 留空 |
+   | Build command | 留空 |
+   | Publish directory | 留空 |
+
+   > 根目錄的 `netlify.toml` 已經寫好 `publish = "web"` 與
+   > `functions = "web/netlify/functions"`，Netlify 會自己讀。
+   > 填了 base directory 反而會改讀 `web/netlify.toml`，兩份設定內容
+   > 等價，但留空少一個出錯的地方。
+
+**環境變數不受影響**——`TRANSLATE_API_KEY`、`VAPID_*` 是站台層級的設定，
+換部署方式不會消失，也不必重設。
+
+**之後的流程**：
+
+```
+改程式 → python3 tools/stamp-version.py → git commit → git push → 自動部署
+```
+
+> ⚠️ 版本戳記那行**還是不能省**，理由跟步驟 3 一樣：
+> 沒戳記就比對不出新版，使用者不會看到「有新版本」。
+
+> ⚠️ 連結 git 之後就不要再用拖曳了。拖曳上去的東西會被下一次 push 蓋掉，
+> 而且線上版本會跟 repo 對不起來，出問題時查不出是哪一份程式碼。
+
 ### 步驟 4：設定 Netlify 環境變數
 
 位置：**Site configuration → Environment variables → Add a variable**
