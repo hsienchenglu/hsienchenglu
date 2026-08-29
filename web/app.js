@@ -410,23 +410,64 @@ const Push = {
     }
   },
 
+  /** 目前卡在哪一步——出問題時把這個字串顯示出來就知道要往哪裡查。 */
+  async swState() {
+    if (!('serviceWorker' in navigator)) return 'unsupported';
+    try {
+      const reg = this.reg || (await navigator.serviceWorker.getRegistration());
+      if (!reg) return 'none';
+      if (reg.active) return 'active';
+      if (reg.waiting) return 'waiting';
+      if (reg.installing) return reg.installing.state;
+      return 'none';
+    } catch (e) {
+      return 'error';
+    }
+  },
+
   /**
    * 註冊完成 ≠ 已經啟用。剛註冊回來的 registration，active 還是 null，
    * 這時候去碰 pushManager，Safari 會直接丟
    * 「Getting push subscription requires a service worker」。
    * 所以先等到真的有一個啟用中的 worker 再往下走。
+   *
+   * 這裡用輪詢而不是只等 navigator.serviceWorker.ready：iOS 上把網頁加到
+   * 主畫面之後，ready 有時候永遠不會 resolve，只有直接去問 registration
+   * 才問得到真正的狀態。
    */
   async waitActive(ms = 12000) {
-    if (this.reg && this.reg.active) return this.reg;
     if (!('serviceWorker' in navigator)) return null;
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      let reg = this.reg;
+      try {
+        if (!reg || !reg.active) reg = (await navigator.serviceWorker.getRegistration()) || reg;
+      } catch (e) { /* 這一輪問不到，下一輪再問 */ }
+      if (reg) {
+        this.reg = reg;
+        if (reg.active) return reg;
+        // 卡在 waiting 就推它一把，sw.js 收到訊息會自己接手
+        if (reg.waiting) {
+          try { reg.waiting.postMessage({ type: 'skipWaiting' }); } catch (e) {}
+        }
+      }
+      await new Promise((res) => setTimeout(res, 300));
+    }
+    return null;
+  },
+
+  /**
+   * 等不到就把註冊整個清掉重來一次。背景服務卡在壞掉的狀態時
+   * （安裝到一半失敗、舊版殘留），只有這招有用。
+   */
+  async reregister() {
     try {
-      const reg = await Promise.race([
-        navigator.serviceWorker.ready,
-        new Promise((res) => setTimeout(() => res(null), ms)),
-      ]);
-      if (reg) this.reg = reg;
-    } catch (e) { /* 逾時或失敗都當作還沒好 */ }
-    return this.reg && this.reg.active ? this.reg : null;
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+    } catch (e) { /* 清不掉就直接重註冊看看 */ }
+    this.reg = null;
+    await this.register();
+    return this.reg ? this.waitActive(12000) : null;
   },
 
   /** Service Worker 被推播叫醒時，要靠這份設定才知道去哪裡查來電。 */
@@ -465,8 +506,8 @@ const Push = {
 
     if (!this.reg) await this.register();
     if (!this.reg) return { ok: false, reason: t('err_sw_failed') };
-    if (!(await this.waitActive())) {
-      return { ok: false, reason: t('err_sw_activating') };
+    if (!(await this.waitActive()) && !(await this.reregister())) {
+      return { ok: false, reason: t('err_sw_activating', await this.swState()) };
     }
     await this.saveConfig();
 

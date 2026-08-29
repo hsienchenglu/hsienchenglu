@@ -525,9 +525,26 @@ Android 每啟動一次語音辨識就發一聲「叮」，那是**系統發的�
 `pushManager`，Safari 就直接丟這個錯。剛部署新版、或第一次開啟時最容易遇到，
 因為 Service Worker 正在 install → activate 的路上。
 
-**解法**：訂閱前先等 `navigator.serviceWorker.ready`（附 12 秒逾時），
-確認真的有一個啟用中的 worker 再往下走。等不到就回一句看得懂的說明，
-不要把原始英文錯誤丟給使用者。
+**解法**（分三層，由淺入深）：
+
+1. **等**——訂閱前先確認真的有一個啟用中的 worker 再往下走，最多等 12 秒。
+   注意不能只等 `navigator.serviceWorker.ready`：**iOS 把網頁加到主畫面之後，
+   那個 Promise 有時候永遠不會 resolve**，所以改成每 300 毫秒去問一次
+   `getRegistration()`，兩邊哪個先有答案都算。
+2. **推**——卡在 `waiting` 的話對它 `postMessage({type:'skipWaiting'})`，
+   `sw.js` 收到會立刻接手（sw.js 那邊也補上了對應的 message 監聽器）。
+3. **重來**——等滿 12 秒還是不行，就把所有註冊 `unregister()` 掉、重新
+   `register()` 再等一次。舊版殘留、或安裝到一半失敗卡死的情況，只有這招有用。
+
+三層都失敗才回報，而且訊息會**帶出卡在哪一步**（`installing` / `waiting` /
+`none` / `error`）。下次再收到回報截圖，看括號裡那個字就知道要往哪查：
+
+| 括號裡顯示 | 意思 |
+| --- | --- |
+| `installing` | 一直在安裝，多半是 `sw.js` 抓不到或內容有錯 |
+| `waiting` | 有舊分頁佔著，關掉其他分頁再試 |
+| `none` | 根本沒註冊成功，看 6-12b 上面的註冊那段 |
+| `error` | 瀏覽器擋住了 Service Worker（無痕模式、或設定關掉了） |
 
 **使用者可以自己處理的**：過幾秒再按一次「重新啟用」就好。
 

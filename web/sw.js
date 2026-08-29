@@ -48,6 +48,11 @@ self.addEventListener('activate', (event) => {
 // 有 fetch 監聽器，瀏覽器才會把這個網站視為可安裝的 PWA
 self.addEventListener('fetch', () => {});
 
+// 卡在 waiting 時網頁會傳這個訊息過來，收到就馬上接手
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'skipWaiting') self.skipWaiting();
+});
+
 async function readConfig() {
   try {
     const cache = await caches.open(CONFIG_CACHE);
