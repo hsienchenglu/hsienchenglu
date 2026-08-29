@@ -410,6 +410,25 @@ const Push = {
     }
   },
 
+  /**
+   * 註冊完成 ≠ 已經啟用。剛註冊回來的 registration，active 還是 null，
+   * 這時候去碰 pushManager，Safari 會直接丟
+   * 「Getting push subscription requires a service worker」。
+   * 所以先等到真的有一個啟用中的 worker 再往下走。
+   */
+  async waitActive(ms = 12000) {
+    if (this.reg && this.reg.active) return this.reg;
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((res) => setTimeout(() => res(null), ms)),
+      ]);
+      if (reg) this.reg = reg;
+    } catch (e) { /* 逾時或失敗都當作還沒好 */ }
+    return this.reg && this.reg.active ? this.reg : null;
+  },
+
   /** Service Worker 被推播叫醒時，要靠這份設定才知道去哪裡查來電。 */
   async saveConfig() {
     if (!('caches' in window)) return;
@@ -446,6 +465,9 @@ const Push = {
 
     if (!this.reg) await this.register();
     if (!this.reg) return { ok: false, reason: t('err_sw_failed') };
+    if (!(await this.waitActive())) {
+      return { ok: false, reason: t('err_sw_activating') };
+    }
     await this.saveConfig();
 
     let serverKey;
