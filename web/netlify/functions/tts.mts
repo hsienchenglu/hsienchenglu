@@ -39,12 +39,19 @@ export default async (req: Request) => {
     return json({ error: '朗讀需要 OpenAI 金鑰，目前這把不是' }, 501);
   }
 
-  let payload: { text?: string; voice?: string };
+  let payload: { text?: string; voice?: string; warm?: unknown };
   try {
     payload = await req.json();
   } catch {
     return json({ error: '請求內容不是合法的 JSON' }, 400);
   }
+
+  /*
+   * 通話接通時前端會先送一個 warm 請求把這支函式叫醒。冷啟動要好幾秒，
+   * 第一句話撞上就會被判定逾時、退回手機內建的朗讀——使用者感受到的是
+   * 「剛開始不穩，講幾句才會順」。這裡只回應、不去產生音檔，所以不花錢。
+   */
+  if (payload.warm) return new Response(null, { status: 204 });
 
   const text = (payload.text || '').trim();
   if (!text) return json({ error: '沒有要朗讀的內容' }, 400);

@@ -702,8 +702,50 @@ const Speech = {
   lastSource: '',
   /** 因為切到背景而暫停，回到前景要自動接回去 */
   pausedByHide: false,
+  /** 語音清單的 voiceschanged 只掛一次 */
+  voicesHooked: false,
+  /** 伺服器朗讀的函式這通電話有沒有先叫醒過 */
+  warmed: false,
+  /** 這一段辨識有沒有真的辨識出東西，用來判斷是不是在空轉 */
+  emptyRuns: 0,
 
   supported() { return !!SR; },
+
+  /**
+   * 通話一開始就先把朗讀「熱機」。前幾句唸不出來、要講幾句才穩，
+   * 幾乎都是這兩件事還沒好：
+   *
+   *  - 手機的語音清單是非同步載入的，第一次拿到的是空陣列，
+   *    挑不到聲音就可能整句不出聲。
+   *  - 伺服器朗讀的函式是冷的，第一次要等好幾秒，等到保險時間到
+   *    就被判定失敗、退回內建朗讀了。
+   *
+   * 兩件都在接通當下先做掉，第一句就跟第十句一樣穩。
+   */
+  warmUp() {
+    try {
+      const synth = window.speechSynthesis;
+      if (synth) {
+        this.voices = synth.getVoices() || [];
+        if (!this.voices.length && !this.voicesHooked) {
+          this.voicesHooked = true;
+          synth.addEventListener('voiceschanged', () => {
+            this.voices = synth.getVoices() || [];
+          });
+        }
+      }
+    } catch (e) { /* 拿不到就等真的要唸的時候再取 */ }
+
+    // warm 這個旗標讓函式醒過來就好，不會真的去產生音檔，不花錢
+    if (prefs.serverTts && !this.warmed) {
+      this.warmed = true;
+      fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ warm: 1 }),
+      }).catch(() => { /* 叫不醒就照舊，只是第一句會慢一點 */ });
+    }
+  },
 
   /**
    * 手機瀏覽器規定聲音要由使用者的動作觸發。通話中的朗讀是網路訊息觸發的，
@@ -789,6 +831,9 @@ const Speech = {
     rec.continuous = !IS_IOS;
     rec.maxAlternatives = 1;
 
+    // 這一段辨識有沒有講出東西——沒有的話就不要一直自動重開，那是空轉
+    let gotFinal = false;
+
     rec.onresult = (e) => {
       let interim = '', final = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -799,6 +844,8 @@ const Speech = {
       if (interim) Call.showPartial(interim);
       if (final.trim()) {
         this.rapidFails = 0; // 有辨識出東西，代表服務是好的
+        this.emptyRuns = 0;
+        gotFinal = true;
         Call.showPartial('');
         Call.sendUtterance(final.trim());
       }
@@ -822,7 +869,8 @@ const Speech = {
       // 開始不到 0.6 秒就結束，代表辨識服務其實沒在運作。
       // 這種情況下原本會每 0.2 秒重試一次，等於每秒建立五個辨識物件，
       // 在 iPhone 上很快就把行程拖垮——改成指數退避，連續失敗就停手。
-      if (Date.now() - this.lastStartAt < 600) {
+      // 有辨識出東西就不算失敗，不管它結束得多快——講得短不是壞掉
+      if (!gotFinal && Date.now() - this.lastStartAt < 600) {
         this.rapidFails++;
         if (this.rapidFails >= 6) {
           this.want = false;
@@ -836,14 +884,27 @@ const Speech = {
       }
 
       /*
-       * 正常結束＝使用者講完停下來了。這裡刻意「不自動重開」。
+       * 正常結束＝使用者講完停下來了。要不要自動接著開下一段，看平台：
        *
        * Android 每啟動一次語音辨識就會發出一聲提示音，那是系統發的，
-       * 網頁沒有權限關掉。原本講完一句就自動重開，等於整通電話一直在叮。
-       * 改成按一下開始講、講完再按一下（或停下來讓它自己收），
-       * 提示音就只在真正開口前響那一次。
+       * 網頁沒有權限關掉。自動重開等於整通電話一直在叮，所以維持
+       * 「按一下開始講、講完再按一下」。它本來就是連續辨識，
+       * 一句講完就會送出，不必等這一段結束。
+       *
+       * iOS 沒有那個提示音，而且只能用單次辨識——講完一句話辨識就結束，
+       * 不自動接下去的話，使用者每講一句都要重按一次麥克風，感覺就像
+       * 「要等麥克風關掉，話才送得出去」。所以 iOS 這邊直接接下一段。
        */
       this.rapidFails = 0;
+      this.emptyRuns = gotFinal ? 0 : this.emptyRuns + 1;
+
+      // 連續幾段都沒講半個字就收手，免得沒人講話時一直空轉耗電
+      if (IS_IOS && Call.active && this.emptyRuns < 4) {
+        setTimeout(() => this.begin(), 150);
+        return;
+      }
+
+      this.emptyRuns = 0;
       this.want = false;
       Call.micUI(false);
       // 麥克風是自己收掉的，不是使用者按的，講一聲免得對著沒開的麥克風說話
@@ -1508,6 +1569,10 @@ const Call = {
     showScreen('screenCall');
     Wave.init();
     this.keepAwake(true);
+    // 趁著還在響鈴、還沒開始講話，先把朗讀該準備的都準備好
+    Speech.warmed = false;
+    Speech.emptyRuns = 0;
+    Speech.warmUp();
 
     this.watchState();
     this.watchMessages();
