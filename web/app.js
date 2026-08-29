@@ -708,6 +708,15 @@ const Speech = {
   warmed: false,
   /** 這一段辨識有沒有真的辨識出東西，用來判斷是不是在空轉 */
   emptyRuns: 0,
+  /** 引擎還沒確認的即時稿。引擎卡住時，這是唯一還留得住的內容 */
+  lastInterim: '',
+  /** 安靜多久之後就把即時稿補送出去 */
+  interimTimer: 0,
+  /** 上次更新畫面的時間，用來節流 */
+  partialAt: 0,
+  /** 剛剛補送出去的內容，用來擋掉引擎慢一步才吐出來的同一句話 */
+  justFlushed: '',
+  justFlushedAt: 0,
 
   supported() { return !!SR; },
 
@@ -821,8 +830,14 @@ const Speech = {
 
     const rec = new SR();
     rec.lang = LANGS[prefs.lang].stt;
-    // iOS 的即時辨識結果事件很密集又不穩，關掉可以明顯降低當掉的機率
-    rec.interimResults = !IS_IOS;
+    /*
+     * 即時結果三個平台都要開。以前 iOS 是關的（事件太密集會拖慢畫面），
+     * 但那等於「引擎不給最終結果，講過的話就完全不存在」——引擎一卡住，
+     * 使用者按停止也送不出東西，因為程式手上根本沒有稿子。
+     *
+     * 現在改成一律留著即時稿當底牌，畫面更新則另外節流，兼顧兩邊。
+     */
+    rec.interimResults = true;
     /*
      * Android 每重新啟動一次辨識就會發出一聲提示音。單次模式下講完一句
      * 或靜默幾秒就結束，接著馬上重啟，整通電話就變成一直有雜音。
@@ -841,13 +856,34 @@ const Speech = {
         if (r.isFinal) final += r[0].transcript;
         else interim += r[0].transcript;
       }
-      if (interim) Call.showPartial(interim);
+      if (interim) {
+        this.lastInterim = interim;
+        // iOS 的即時事件很密集，畫面更新節流一下，不然會拖慢整個頁面
+        const now = Date.now();
+        if (now - this.partialAt > 120) {
+          this.partialAt = now;
+          Call.showPartial(interim);
+        }
+        /*
+         * 講完話之後引擎有時候就是不給最終結果，麥克風一直開著不關。
+         * 安靜超過這段時間就當作話講完了，用即時稿補送出去。
+         */
+        clearTimeout(this.interimTimer);
+        this.interimTimer = setTimeout(() => {
+          if (this.flushInterim()) this.restart();
+        }, 2500);
+      }
       if (final.trim()) {
+        const text = final.trim();
         this.rapidFails = 0; // 有辨識出東西，代表服務是好的
         this.emptyRuns = 0;
         gotFinal = true;
+        this.lastInterim = '';
+        clearTimeout(this.interimTimer);
+        this.interimTimer = 0;
         Call.showPartial('');
-        Call.sendUtterance(final.trim());
+        // 剛剛已經用即時稿補送過的話，引擎慢一步才吐出來就不要再送一次
+        if (!this.isDuplicate(text)) Call.sendUtterance(text);
       }
     };
 
@@ -864,6 +900,8 @@ const Speech = {
     rec.onend = () => {
       this.rec = null;
       this.starting = false;
+      // 引擎沒給最終結果就收掉這一段，講過的話還在即時稿裡，補送出去
+      if (!gotFinal && this.flushInterim()) gotFinal = true;
       if (!this.want || this.speaking) { Call.micUI(false); return; }
 
       // 開始不到 0.6 秒就結束，代表辨識服務其實沒在運作。
@@ -931,14 +969,64 @@ const Speech = {
     }
   },
 
+  /**
+   * 把引擎還沒確認、但使用者顯然已經講完的那段話送出去。
+   *
+   * 這是「按了停止卻什麼都沒送出」的解法：以前手上只有引擎給的最終結果，
+   * 引擎不給就完全沒東西可送；現在即時稿一直留著，隨時補得出來。
+   */
+  flushInterim() {
+    clearTimeout(this.interimTimer);
+    this.interimTimer = 0;
+    const text = (this.lastInterim || '').trim();
+    this.lastInterim = '';
+    if (!text) return false;
+
+    this.justFlushed = text;
+    this.justFlushedAt = Date.now();
+    this.rapidFails = 0;
+    this.emptyRuns = 0;   // 有講出東西，不算空轉
+    Call.showPartial('');
+    Call.sendUtterance(text);
+    return true;
+  },
+
+  /** 補送過的內容，引擎晚一步才確認同一句話——擋掉，不要送兩次。 */
+  isDuplicate(text) {
+    if (!this.justFlushed) return false;
+    if (Date.now() - this.justFlushedAt > 8000) return false;
+    const norm = (s) => String(s).replace(/[\s,.!?;:，。！？、；：]/g, '');
+    const a = norm(this.justFlushed);
+    const b = norm(text);
+    return !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+  },
+
+  /** 重開一段辨識。用 abort 而不是 stop，這一段的結果就不會再吐出來重複送。 */
+  restart() {
+    if (!this.want) return;
+    const rec = this.rec;
+    this.rec = null;
+    this.starting = false;
+    if (rec) {
+      rec.onend = rec.onresult = rec.onerror = null;
+      try { rec.abort(); } catch (e) { /* 已經停了 */ }
+    }
+    setTimeout(() => this.begin(), 150);
+  },
+
   stop() {
     this.want = false;
+    // 使用者按停止＝話講完了。還沒送出去的先補送，再收掉辨識
+    this.flushInterim();
     this.kill();
     Call.micUI(false);
   },
 
   kill() {
     this.starting = false;
+    clearTimeout(this.interimTimer);
+    this.interimTimer = 0;
+    this.lastInterim = '';
     if (this.rec) {
       this.rec.onend = null;
       try { this.rec.stop(); } catch (e) { /* 已停止 */ }
