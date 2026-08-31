@@ -146,6 +146,9 @@ https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app
 
 2. 到 <https://app.netlify.com/projects/zhid-talk/deploys>，把 `web` 資料夾再拖一次。
 
+> `logo.png` 已經在 `web/` 裡（2026-08-31 加入），解壓縮之後直接拖就好，
+> 不必再手動放。以前每次都要提醒這件事，就是因為它不在程式碼裡。
+
 > ⚠️ 拖曳型站台**沒有** Trigger deploy 按鈕（那是連結 Git 的站台才有），
 > 更新網頁或環境變數生效都靠重新拖曳。
 
@@ -156,11 +159,13 @@ https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app
 ### 步驟 3b：改成從 GitHub 自動部署（**選用，目前不採用**）
 
 > **2026-08-29 決定維持拖曳部署。** 這一節保留備查，哪天嫌拖曳麻煩再回來看，
-> 不必現在做。拖曳完全夠用，只要記得兩件事：**跑版本戳記**、**放 logo.png**。
+> 不必現在做。拖曳完全夠用，只要記得一件事：**跑版本戳記**。
 
-拖曳有兩個固定的麻煩：每次都要記得把 `logo.png` 放進 `web/`，
-而且沒有任何紀錄可以回溯「線上這一版到底是哪一份程式碼」。
-連結 GitHub 之後 `git push` 就會自動部署，兩個問題一起解決。
+拖曳剩下的麻煩是：沒有任何紀錄可以回溯「線上這一版到底是哪一份程式碼」。
+連結 GitHub 之後 `git push` 就會自動部署。
+
+> `logo.png` 從 2026-08-31 起**已經在 repo 裡**（`web/logo.png`），
+> 不必再手動放，這一項不再是改用 git 部署的理由。
 
 **順序不能錯。** repo 落後幾個 commit 的話，連上去會直接把線上版
 退回舊程式碼——先推、再連。
@@ -172,14 +177,7 @@ https://專案名-default-rtdb.asia-southeast1.firebasedatabase.app
    git push aicom <分支>:main
    ```
 
-2. **把 `logo.png` 加進 repo**。它一直不在 repo 裡，所以拖曳部署時
-   每次都要手動放。改成 git 部署之後，**不在 repo 裡就永遠不會出現**：
-
-   ```
-   git add web/logo.png
-   git commit -m "加入 logo"
-   git push aicom <分支>:main
-   ```
+2. ~~把 `logo.png` 加進 repo~~ **已完成**（2026-08-31）。
 
 3. Netlify 後台 → **Site configuration → Build & deploy →
    Continuous deployment → Link repository** → 選 GitHub → 選 repo → 分支 `main`。
