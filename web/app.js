@@ -114,10 +114,13 @@ function fmtTime(ts) {
 
 // ───────────────────────────── Firebase REST / SSE
 
-function fbUrl(path) {
+function fbUrl(path, query) {
   if (!prefs.dbUrl) throw new Error('尚未設定資料庫網址');
   const base = prefs.dbUrl.replace(/\/+$/, '');
-  const q = prefs.dbSecret ? '?auth=' + encodeURIComponent(prefs.dbSecret) : '';
+  const params = [];
+  if (prefs.dbSecret) params.push('auth=' + encodeURIComponent(prefs.dbSecret));
+  if (query) params.push(query);
+  const q = params.length ? '?' + params.join('&') : '';
   return `${base}/${String(path).replace(/^\/+/, '')}.json${q}`;
 }
 
@@ -141,8 +144,8 @@ async function fbPush(path, value) {
   return j.name || null;
 }
 
-async function fbGet(path) {
-  const r = await fetch(fbUrl(path));
+async function fbGet(path, query) {
+  const r = await fetch(fbUrl(path, query));
   if (!r.ok) throw new Error('資料庫讀取失敗 HTTP ' + r.status);
   return r.json();
 }
@@ -151,6 +154,65 @@ async function fbDelete(path) {
   const r = await fetch(fbUrl(path), { method: 'DELETE' });
   if (!r.ok) throw new Error('資料庫刪除失敗 HTTP ' + r.status);
 }
+
+/**
+ * 通話結束後把資料庫上的紀錄刪掉。
+ *
+ * 每通電話都會在 calls/{callId} 底下留 meta、state，以及 msgs——
+ * 也就是雙方講過的每一句話，原文和譯文都在。資料庫規則是公開讀寫的，
+ * 網址又烙在網頁裡，這些內容留著只有壞處：別人讀得到，資料庫還會無限長大。
+ *
+ * 雙方本機都已經存好逐字稿（通話紀錄那一頁），刪掉不會少任何東西。
+ */
+const CallCleanup = {
+  /** 掛斷後隔一下再刪，讓對方先收到「已結束」的訊令 */
+  DELAY_MS: 8000,
+  /** 沒被正常刪掉的（例如 App 直接被關掉），超過這個時間就在開啟時清掉 */
+  MAX_AGE_MS: 6 * 3600 * 1000,
+  /** 一次最多刪幾筆，免得拖慢開啟速度 */
+  MAX_PER_SWEEP: 50,
+  /** 這個專案 2026 年才有，比這更早的時間戳一定是解錯了 */
+  MIN_TS: Date.parse('2025-01-01T00:00:00Z'),
+
+  after(callId) {
+    if (!callId) return;
+    setTimeout(() => {
+      fbDelete(`calls/${callId}`).catch(() => { /* 刪不掉就交給下次開啟時掃 */ });
+    }, this.DELAY_MS);
+  },
+
+  /**
+   * callId 的前半段就是建立時間（36 進位的毫秒），所以只要用 shallow
+   * 拿一份 id 清單就能判斷新舊，完全不必把通話內容讀下來。
+   * 認不出格式的一律留著——寧可漏刪，也不要誤刪。
+   */
+  async sweep() {
+    let ids;
+    try {
+      ids = await fbGet('calls', 'shallow=true');
+    } catch (e) {
+      return;   // 讀不到就算了，這只是打掃
+    }
+    if (!ids || typeof ids !== 'object') return;
+
+    const cutoff = Date.now() - this.MAX_AGE_MS;
+    const stale = Object.keys(ids).filter((id) => {
+      /*
+       * 只檢查「有沒有解出數字」是不夠的：36 進位下字母也是合法數字，
+       * 'not-a-timestamp' 會解出 30701（1970 年），照樣被當成很舊的紀錄刪掉。
+       * 所以時間必須落在合理範圍內才算數，認不出的一律留著。
+       */
+      const ts = parseInt(String(id).split('_')[0], 36);
+      return Number.isFinite(ts) && ts >= this.MIN_TS && ts < cutoff;
+    });
+
+    for (const id of stale.slice(0, this.MAX_PER_SWEEP)) {
+      try {
+        await fbDelete(`calls/${id}`);
+      } catch (e) { /* 下次再試 */ }
+    }
+  },
+};
 
 /**
  * 訂閱節點變動。EventSource 本身會自動重連，斷線時只要通知使用者即可。
@@ -1893,6 +1955,8 @@ const Call = {
       fbPut(`calls/${this.callId}/state`, 'ended').catch(() => {});
       if (!this.connected) fbDelete(`users/${sanitize(this.peer)}/incoming`).catch(() => {});
     }
+    // 逐字稿本機已經留著了，資料庫上那份沒有理由繼續放著給人看
+    CallCleanup.after(this.callId);
 
     History.save({
       callId: this.callId, peer: this.peer, incoming: this.incoming,
@@ -2269,6 +2333,10 @@ function init() {
   // 設定完成就自動連線，這樣網頁一打開就等得到來電；
   // 鈴聲與背景通知仍需要使用者按一下按鈕才能授權。
   Standby.start();
+
+  // 掃掉沒被正常刪除的舊通話（App 被直接關掉時就會留下來）。
+  // 純粹是打掃，失敗也不影響任何功能，所以不等它、也不理會錯誤。
+  CallCleanup.sweep().catch(() => {});
 
   if (!Speech.supported()) {
     toast(t('err_no_stt'));
