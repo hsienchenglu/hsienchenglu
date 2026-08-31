@@ -672,6 +672,13 @@ const SILENT_CLIP =
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+/*
+ * 每啟動一次語音辨識就發一聲提示音的是 Android，那是系統發的、網頁關不掉。
+ * 判斷要針對 Android 本身，不能寫成「不是 iPhone 就是它」——
+ * 電腦也不是 iPhone，但電腦不會叮，不該跟著被限制。
+ */
+const IS_ANDROID = /Android/.test(navigator.userAgent);
+
 const Speech = {
   rec: null,
   want: false,
@@ -925,19 +932,19 @@ const Speech = {
        * 正常結束＝使用者講完停下來了。要不要自動接著開下一段，看平台：
        *
        * Android 每啟動一次語音辨識就會發出一聲提示音，那是系統發的，
-       * 網頁沒有權限關掉。自動重開等於整通電話一直在叮，所以維持
+       * 網頁沒有權限關掉。自動重開等於整通電話一直在叮，所以只有它維持
        * 「按一下開始講、講完再按一下」。它本來就是連續辨識，
        * 一句講完就會送出，不必等這一段結束。
        *
-       * iOS 沒有那個提示音，而且只能用單次辨識——講完一句話辨識就結束，
-       * 不自動接下去的話，使用者每講一句都要重按一次麥克風，感覺就像
-       * 「要等麥克風關掉，話才送得出去」。所以 iOS 這邊直接接下一段。
+       * 其他平台（iPhone、電腦）都沒有那個提示音，自動接下一段是免費的。
+       * 不自動接的話，使用者每講一句都要重按一次麥克風，感覺就像
+       * 「要等麥克風關掉，話才送得出去」。
        */
       this.rapidFails = 0;
       this.emptyRuns = gotFinal ? 0 : this.emptyRuns + 1;
 
       // 連續幾段都沒講半個字就收手，免得沒人講話時一直空轉耗電
-      if (IS_IOS && Call.active && this.emptyRuns < 4) {
+      if (!IS_ANDROID && Call.active && this.emptyRuns < 4) {
         setTimeout(() => this.begin(), 150);
         return;
       }
