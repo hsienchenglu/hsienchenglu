@@ -8,7 +8,7 @@
      留空的話行為照舊，由每個人自己在設定頁填。 -->
 <meta name="default-db-url"
       content="https://zhid-talk-default-rtdb.asia-southeast1.firebasedatabase.app">
-<meta name="app-version" content="20260831-1731">
+<meta name="app-version" content="20260831-1745">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -150,6 +150,16 @@
       <label class="radio"><input type="radio" name="uilang" value="zh"> 中文</label>
       <label class="radio"><input type="radio" name="uilang" value="id"> Bahasa Indonesia</label>
       <label class="radio"><input type="radio" name="uilang" value="en"> English</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="settings_text_size">字級</div>
+    <div class="hint" data-i18n="settings_text_size_desc"></div>
+    <div class="row gap wrap">
+      <label class="radio"><input type="radio" name="textsize" value="m"> <span data-i18n="text_size_m">標準</span></label>
+      <label class="radio"><input type="radio" name="textsize" value="l"> <span data-i18n="text_size_l">大</span></label>
+      <label class="radio"><input type="radio" name="textsize" value="xl"> <span data-i18n="text_size_xl">特大</span></label>
     </div>
   </div>
 

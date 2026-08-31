@@ -38,6 +38,7 @@ const DEFAULTS = {
   dbUrl: '', dbSecret: '',
   provider: 'google', apiKey: '',
   ring: 2, autoListen: true, autoSpeak: true, serverTts: true,
+  textSize: 'm',
 };
 
 /**
@@ -97,6 +98,17 @@ const Store = {
       || e.code === 22 || e.code === 1014;
   },
 };
+
+/**
+ * 套用字級。所有字都是 rem，所以只要改根元素的大小，整個 App 一起變。
+ * 這是給看不清楚小字的人用的——尤其是印尼那邊年紀較長的客戶。
+ */
+function applyTextSize(size) {
+  const root = document.documentElement;
+  root.classList.remove('text-l', 'text-xl');
+  if (size === 'l') root.classList.add('text-l');
+  else if (size === 'xl') root.classList.add('text-xl');
+}
 
 function savePrefs() {
   // 設定存不進去是使用者該知道的事——不講的話就變成「設定又跑掉了」
@@ -2174,6 +2186,8 @@ function fillSettings() {
   document.querySelector(`input[name="lang"][value="${prefs.lang}"]`).checked = true;
   document.querySelector(`input[name="provider"][value="${prefs.provider}"]`).checked = true;
   document.querySelector(`input[name="uilang"][value="${UI_LANG}"]`).checked = true;
+  const sizeRadio = document.querySelector(`input[name="textsize"][value="${prefs.textSize}"]`);
+  if (sizeRadio) sizeRadio.checked = true;
   $('testResult').textContent = '';
   $('versionLabel').textContent = t('version_label', Updater.baked || '—');
 }
@@ -2196,6 +2210,8 @@ function readSettings() {
   prefs.autoSpeak = $('setAutoSpeak').checked;
   prefs.serverTts = $('setServerTts').checked;
   prefs.uiLang = document.querySelector('input[name="uilang"]:checked').value;
+  const size = document.querySelector('input[name="textsize"]:checked');
+  if (size) prefs.textSize = size.value;
   savePrefs();
   applyUiLang(prefs.uiLang);
   return true;
@@ -2333,6 +2349,15 @@ function wire() {
       savePrefs();
       refreshHeader();
       Push.saveConfig();
+    });
+  });
+
+  document.querySelectorAll('input[name="textsize"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      prefs.textSize = radio.value;
+      savePrefs();
+      applyTextSize(radio.value);
     });
   });
 
@@ -2492,6 +2517,7 @@ function wire() {
 
 function init() {
   wire();
+  applyTextSize(prefs.textSize);
   // 沒特別指定的話，介面語言跟著「我說的語言」走——
   // 印尼看護把語言設成印尼文，介面就自然是印尼文
   applyUiLang(prefs.uiLang || prefs.lang);

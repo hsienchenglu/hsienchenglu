@@ -92,6 +92,11 @@ const I18N = {
     // 設定
     settings: '設定',
     back: '返回',
+    settings_text_size: '字級',
+    settings_text_size_desc: '看不清楚就調大一點，整個 App 都會跟著變',
+    text_size_m: '標準',
+    text_size_l: '大',
+    text_size_xl: '特大',
     settings_account: '帳號',
     settings_account_desc: '你的帳號要告訴對方，對方才撥得進來。兩邊請填不同帳號。',
     my_account_hint: '我的帳號',
@@ -238,6 +243,11 @@ const I18N = {
     // Pengaturan
     settings: 'Pengaturan',
     back: 'Kembali',
+    settings_text_size: 'Ukuran huruf',
+    settings_text_size_desc: 'Kalau kurang jelas, perbesar saja — seluruh aplikasi ikut berubah',
+    text_size_m: 'Normal',
+    text_size_l: 'Besar',
+    text_size_xl: 'Sangat besar',
     settings_account: 'Akun',
     settings_account_desc:
       'Beritahu akun Anda ke lawan bicara supaya dia bisa menelepon. Kedua sisi harus memakai akun yang berbeda.',
@@ -386,6 +396,11 @@ const I18N = {
     // 設定
     settings: 'Settings',
     back: 'Back',
+    settings_text_size: 'Text size',
+    settings_text_size_desc: 'Hard to read? Make it bigger — the whole app follows',
+    text_size_m: 'Normal',
+    text_size_l: 'Large',
+    text_size_xl: 'Extra large',
     settings_account: 'Account',
     settings_account_desc: 'Tell the other person your account so they can call you. The two sides must use different accounts.',
     my_account_hint: 'My account',
