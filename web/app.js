@@ -63,8 +63,44 @@ function loadPrefs() {
   return p;
 }
 
+/**
+ * localStorage 寫入的統一入口。
+ *
+ * 空間滿的時候 setItem 會丟 QuotaExceededError，而原本沒有任何地方接它。
+ * 後果比「存不進去」嚴重得多：在 Call.end() 裡，存紀錄排在關閉串流之前，
+ * 一丟出來整段就中斷了——SSE 連線關不掉、通話狀態解不開，電話掛不掉。
+ *
+ * 所以寫入一律走這裡：接住錯誤、騰出空間再試一次、回報成功與否。
+ */
+const Store = {
+  set(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e) {
+      if (!this.isQuotaError(e)) return false;
+      if (!History.freeSpace()) return false;
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch (e2) {
+        return false;   // 騰過空間還是寫不進去，放棄，但不要往上丟
+      }
+    }
+  },
+
+  /** 各家瀏覽器的名稱和代碼都不一樣，一律認成空間不足。 */
+  isQuotaError(e) {
+    if (!e) return false;
+    return e.name === 'QuotaExceededError'
+      || e.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+      || e.code === 22 || e.code === 1014;
+  },
+};
+
 function savePrefs() {
-  localStorage.setItem('zhid.prefs', JSON.stringify(prefs));
+  // 設定存不進去是使用者該知道的事——不講的話就變成「設定又跑掉了」
+  if (!Store.set('zhid.prefs', JSON.stringify(prefs))) toast(t('err_storage_full'));
 }
 
 /** Firebase 的鍵值不能含有 . $ # [ ] / 這些字元；規則和 Android 版一致。 */
@@ -1409,6 +1445,8 @@ const Wave = {
 
 const History = {
   key: 'zhid.history',
+  /** 最多保留幾筆。不設上限只是把「空間爆掉」這件事往後延而已 */
+  MAX: 300,
 
   list() {
     try {
@@ -1422,12 +1460,48 @@ const History = {
   save(record) {
     const all = this.list().filter((r) => r.callId !== record.callId);
     all.push(record);
-    localStorage.setItem(this.key, JSON.stringify(all));
+    all.sort((a, b) => b.startTs - a.startTs);
+
+    // 超過上限就連同逐字稿一起丟掉最舊的
+    all.slice(this.MAX).forEach((r) => localStorage.removeItem('zhid.t.' + r.callId));
+    Store.set(this.key, JSON.stringify(all.slice(0, this.MAX)));
+  },
+
+  /**
+   * 空間不夠時騰出一些，有清掉東西就回傳 true。
+   *
+   * 先丟最舊那一半的逐字稿：它們是這裡面最大的東西，而且越舊越不可能
+   * 再回去看。通話紀錄本身（時間、對象、長度）很小，盡量留著。
+   *
+   * 這裡直接呼叫 localStorage，不能走 Store.set——那會繞回來變成無窮遞迴。
+   */
+  freeSpace() {
+    const all = this.list();
+    let freed = false;
+    for (const r of all.slice(Math.floor(all.length / 2))) {
+      const k = 'zhid.t.' + r.callId;
+      if (localStorage.getItem(k) !== null) {
+        localStorage.removeItem(k);
+        freed = true;
+      }
+    }
+    if (freed) return true;
+
+    // 逐字稿都清光了還是不夠，只好連紀錄一起砍到剩最近 20 筆
+    if (all.length > 20) {
+      try {
+        localStorage.setItem(this.key, JSON.stringify(all.slice(0, 20)));
+        all.slice(20).forEach((r) => localStorage.removeItem('zhid.t.' + r.callId));
+        return true;
+      } catch (e) { /* 連砍都砍不動就放棄 */ }
+    }
+    return false;
   },
 
   remove(callId) {
-    localStorage.setItem(this.key, JSON.stringify(this.list().filter((r) => r.callId !== callId)));
+    // 先刪逐字稿：就算下一行寫不進去，空間也已經放出來了
     localStorage.removeItem('zhid.t.' + callId);
+    Store.set(this.key, JSON.stringify(this.list().filter((r) => r.callId !== callId)));
   },
 
   clear() {
@@ -1437,7 +1511,8 @@ const History = {
 
   saveTranscript(callId, msgs) {
     if (!msgs.length) return;
-    localStorage.setItem('zhid.t.' + callId, JSON.stringify(msgs));
+    // 存不下就算了——通話紀錄那一列還在，不值得為了逐字稿打斷掛電話的流程
+    Store.set('zhid.t.' + callId, JSON.stringify(msgs));
   },
 
   transcript(callId) {
@@ -2015,6 +2090,14 @@ const Call = {
     // 逐字稿本機已經留著了，資料庫上那份沒有理由繼續放著給人看
     CallCleanup.after(this.callId);
 
+    /*
+     * 先關連線再存紀錄。存紀錄會碰 localStorage，而 localStorage 是這一段
+     * 裡唯一可能丟例外的東西（空間滿）。萬一真的丟出來，也不能拖累
+     * 「把電話掛乾淨」這件事——連線關不掉會一直佔著，比少一筆紀錄嚴重得多。
+     */
+    if (this.stateStream) { this.stateStream.close(); this.stateStream = null; }
+    if (this.msgStream) { this.msgStream.close(); this.msgStream = null; }
+
     History.save({
       callId: this.callId, peer: this.peer, incoming: this.incoming,
       startTs: this.startTs, durationSec: Math.round(duration),
@@ -2022,9 +2105,6 @@ const Call = {
     });
     History.saveTranscript(this.callId, this.msgs);
     History.render();
-
-    if (this.stateStream) { this.stateStream.close(); this.stateStream = null; }
-    if (this.msgStream) { this.msgStream.close(); this.msgStream = null; }
 
     this.active = false;
     showScreen('screenMain');
