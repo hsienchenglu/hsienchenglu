@@ -293,6 +293,8 @@ const Ringer = {
   timers: [],
   nodes: [],
   idleTimer: 0,
+  /** 撥出去時的回鈴音計時器，接通或掛斷才停 */
+  ringbackTimer: 0,
 
   /**
    * 瀏覽器要有使用者互動才允許出聲，所以上線時先把 AudioContext 準備好。
@@ -348,13 +350,35 @@ const Ringer = {
     }
   },
 
-  oneRing() {
+  /**
+   * 撥出去時的回鈴音，一直響到接通或掛斷為止。
+   *
+   * 沒有這個的話，撥號的人只看得到「撥號中…」四個字，聽不到任何聲音，
+   * 會以為根本沒撥出去。按下撥號本身就是使用者動作，所以出得了聲。
+   */
+  startRingback() {
+    this.stopRingback();
+    if (!this.wake()) return;
+    const tick = () => {
+      this.oneRing(0.09);   // 比來電鈴聲小聲，這是講電話的人自己貼著耳朵聽的
+      this.ringbackTimer = setTimeout(tick, 6000);
+    };
+    tick();
+  },
+
+  stopRingback() {
+    clearTimeout(this.ringbackTimer);
+    this.ringbackTimer = 0;
+  },
+
+  oneRing(vol) {
     const ctx = this.ctx;
     if (!ctx) return;
+    const peak = vol || 0.22;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.05);
-    gain.gain.setValueAtTime(0.22, ctx.currentTime + 1.9);
+    gain.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + 0.05);
+    gain.gain.setValueAtTime(peak, ctx.currentTime + 1.9);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 2);
     gain.connect(ctx.destination);
 
@@ -371,6 +395,7 @@ const Ringer = {
   },
 
   stop() {
+    this.stopRingback();
     this.timers.forEach(clearTimeout);
     this.timers = [];
     this.nodes.forEach((n) => { try { n.stop ? n.stop() : n.disconnect(); } catch (e) { /* 已停止 */ } });
@@ -1664,6 +1689,8 @@ const Call = {
     showScreen('screenCall');
     Wave.init();
     this.keepAwake(true);
+    // 撥出去而且還沒接通：放回鈴音，不然撥號的人聽不到任何動靜
+    if (!incoming && !accepted) Ringer.startRingback();
     // 趁著還在響鈴、還沒開始講話，先把朗讀該準備的都準備好
     Speech.warmed = false;
     Speech.emptyRuns = 0;
@@ -1771,6 +1798,7 @@ const Call = {
     this.connected = true;
     this.connectedAt = Date.now();
     clearTimeout(this.ringTimeout);
+    Ringer.stopRingback();   // 接通了就別再響
     $('callStatus').textContent = t('status_connected');
     if (!this.incoming) this.fetchPeerLang();
     if (prefs.autoListen) Speech.start();
@@ -1853,6 +1881,7 @@ const Call = {
     this.ending = true;
     clearTimeout(this.ringTimeout);
     clearInterval(this.timer);
+    Ringer.stopRingback();   // 沒接通就掛掉時，回鈴音也要跟著停
 
     Speech.stop();
     Speech.stopSpeaking();
