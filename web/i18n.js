@@ -56,6 +56,7 @@ const I18N = {
     // 通話中
     status_calling: '撥號中…',
     status_connected: '通話中',
+    status_reconnecting: '連線中斷，重新連線中…',
     status_translating: '翻譯中…',
     no_transcript: '這通電話還沒有對話內容',
     mic_on_hint: '聆聽中…說完請再按一下麥克風',
@@ -201,6 +202,7 @@ const I18N = {
     // Saat panggilan
     status_calling: 'Memanggil…',
     status_connected: 'Tersambung',
+    status_reconnecting: 'Koneksi terputus, menyambung ulang…',
     status_translating: 'Menerjemahkan…',
     no_transcript: 'Belum ada percakapan di panggilan ini',
     mic_on_hint: 'Mendengarkan… tekan mikrofon lagi setelah selesai',
@@ -348,6 +350,7 @@ const I18N = {
     // 通話中
     status_calling: 'Calling\u2026',
     status_connected: 'Connected',
+    status_reconnecting: 'Connection lost — reconnecting…',
     status_translating: 'Translating\u2026',
     no_transcript: 'Nothing has been said on this call yet',
     mic_on_hint: 'Listening\u2026 tap the mic again when you are done',

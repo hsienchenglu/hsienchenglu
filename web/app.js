@@ -251,10 +251,14 @@ const CallCleanup = {
 };
 
 /**
- * 訂閱節點變動。EventSource 本身會自動重連，斷線時只要通知使用者即可。
- * onEvent(相對路徑, 內容)，內容被刪除時為 null。
+ * 訂閱節點變動。onEvent(相對路徑, 內容)，內容被刪除時為 null。
+ *
+ * EventSource 自己會重連，而且重連後 Firebase 會重送整個節點，
+ * 所以**斷線期間的訊息不會遺失**，只是會晚一點到。真正的問題是使用者
+ * 不知道自己斷線了，還對著沒連線的電話一直講——所以 onError／onOpen
+ * 兩個都要接，斷了要講，回來了也要講。
  */
-function fbStream(path, onEvent, onError) {
+function fbStream(path, onEvent, onError, onOpen) {
   const es = new EventSource(fbUrl(path));
   const handle = (e) => {
     try {
@@ -267,6 +271,7 @@ function fbStream(path, onEvent, onError) {
   es.addEventListener('put', handle);
   es.addEventListener('patch', handle);
   if (onError) es.addEventListener('error', onError);
+  if (onOpen) es.addEventListener('open', onOpen);
   return es;
 }
 
@@ -1640,7 +1645,9 @@ const Standby = {
       this.stream = fbStream(
         `users/${account}/incoming`,
         (path, data) => this.onEvent(path, data),
-        () => { $('standbyState').textContent = t('standby_reconnecting'); }
+        () => { $('standbyState').textContent = t('standby_reconnecting'); },
+        // 沒有這一段的話，斷線一次「重新連線中」就會一直掛在那裡騙人
+        () => { $('standbyState').textContent = t('standby_online', prefs.account); }
       );
     } catch (e) {
       toast(e.message);
@@ -1808,6 +1815,11 @@ const Call = {
   seen: new Set(),
   stateStream: null,
   msgStream: null,
+  /** 兩條串流各自的連線狀態，任一條斷了就算斷線 */
+  netUp: { state: false, msgs: false },
+  netDown: false,
+  /** 目前該顯示哪一個狀態文字（斷線時會被重新連線中蓋過去） */
+  statusKey: '',
   timer: null,
   ringTimeout: null,
   wakeLock: null,
@@ -1845,7 +1857,10 @@ const Call = {
 
     $('callPeer').textContent = peer;
     this.langPairUI();
-    $('callStatus').textContent = accepted ? t('status_connected') : t('status_calling');
+    this.netDown = false;
+    this.netUp = { state: false, msgs: false };
+    this.statusKey = accepted ? 'status_connected' : 'status_calling';
+    this.showStatus();
     $('callDuration').textContent = '';
     $('transcript').innerHTML = '';
     $('transcriptEmpty').classList.remove('hidden');
@@ -1908,28 +1923,60 @@ const Call = {
     }, 45000);
   },
 
+  /**
+   * 通話畫面的狀態列。
+   *
+   * 斷線的訊息不能被「通話中」「翻譯中」這些字蓋掉——那正是使用者最需要
+   * 知道的時候。所以狀態統一走這裡，斷線期間一律顯示重新連線中。
+   */
+  showStatus(key) {
+    if (key) this.statusKey = key;
+    $('callStatus').textContent = this.netDown
+      ? t('status_reconnecting')
+      : t(this.statusKey || 'status_connected');
+  },
+
+  /** 兩條串流只要有一條斷了就算斷線，兩條都回來才算恢復。 */
+  setNet(stream, up) {
+    this.netUp[stream] = up;
+    const down = !this.netUp.state || !this.netUp.msgs;
+    if (down === this.netDown) return;
+    this.netDown = down;
+    this.showStatus();
+  },
+
   watchState() {
-    this.stateStream = fbStream(`calls/${this.callId}/state`, (path, data) => {
-      if (this.ending) return;
-      if (data === 'accepted') this.onConnected();
-      else if (data === 'rejected') { toast(t('call_rejected')); this.end(false); }
-      else if (data === 'ended') { toast(t('call_peer_hung_up')); this.end(false); }
-    });
+    this.stateStream = fbStream(
+      `calls/${this.callId}/state`,
+      (path, data) => {
+        if (this.ending) return;
+        if (data === 'accepted') this.onConnected();
+        else if (data === 'rejected') { toast(t('call_rejected')); this.end(false); }
+        else if (data === 'ended') { toast(t('call_peer_hung_up')); this.end(false); }
+      },
+      () => this.setNet('state', false),
+      () => this.setNet('state', true)
+    );
   },
 
   watchMessages() {
-    this.msgStream = fbStream(`calls/${this.callId}/msgs`, (path, data) => {
-      if (!data) return;
-      if (path === '/') {
-        // 初次連線會一次送來整包既有訊息
-        Object.keys(data)
-          .map((k) => [k, data[k]])
-          .sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0))
-          .forEach(([k, v]) => this.onRemoteMsg(k, v));
-      } else {
-        this.onRemoteMsg(path.replace(/^\//, ''), data);
-      }
-    });
+    this.msgStream = fbStream(
+      `calls/${this.callId}/msgs`,
+      (path, data) => {
+        if (!data) return;
+        if (path === '/') {
+          // 連線（或重新連線）時會一次送來整包既有訊息，斷線期間的就是這樣補回來的
+          Object.keys(data)
+            .map((k) => [k, data[k]])
+            .sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0))
+            .forEach(([k, v]) => this.onRemoteMsg(k, v));
+        } else {
+          this.onRemoteMsg(path.replace(/^\//, ''), data);
+        }
+      },
+      () => this.setNet('msgs', false),
+      () => this.setNet('msgs', true)
+    );
   },
 
   onRemoteMsg(key, o) {
@@ -1965,7 +2012,7 @@ const Call = {
     this.connectedAt = Date.now();
     clearTimeout(this.ringTimeout);
     Ringer.stopRingback();   // 接通了就別再響
-    $('callStatus').textContent = t('status_connected');
+    this.showStatus('status_connected');
     if (!this.incoming) this.fetchPeerLang();
     if (prefs.autoListen) Speech.start();
   },
@@ -1991,7 +2038,7 @@ const Call = {
   /** 沒送出去的話留在畫面上，標成失敗、可以點一下重送。 */
   markFailed(text, reason) {
     toast(reason);
-    $('callStatus').textContent = t('status_connected');
+    this.showStatus('status_connected');
     this.append({
       id: 'failed_' + Date.now().toString(36),
       fromMe: true, src: text, dst: '', dstLang: this.target,
@@ -2001,7 +2048,7 @@ const Call = {
 
   async sendUtterance(text) {
     if (!text || this.ending) return;
-    $('callStatus').textContent = t('status_translating');
+    this.showStatus('status_translating');
     let dst;
     try {
       dst = await translate(text, prefs.lang, this.target);
@@ -2029,7 +2076,7 @@ const Call = {
     this.append({
       id: key || 'local_' + ts, fromMe: true, src: text, dst, dstLang: this.target, ts,
     });
-    $('callStatus').textContent = t('status_connected');
+    this.showStatus('status_connected');
   },
 
   append(msg) {
@@ -2179,7 +2226,7 @@ function applyUiLang(lang) {
 
   if (Call.active) {
     Call.langPairUI();
-    $('callStatus').textContent = Call.connected ? t('status_connected') : t('status_calling');
+    Call.showStatus(Call.connected ? 'status_connected' : 'status_calling');
   }
   Push.saveConfig(); // Service Worker 的通知也要跟著換語言
 }
