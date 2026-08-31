@@ -124,12 +124,46 @@ async function viaGemini(text: string, from: string, to: string, key: string) {
   return out;
 }
 
+/*
+ * 模型名稱是最脆弱的一環：打錯字、或哪天服務商把某個版本下架，
+ * 整個翻譯就一句都不通。朗讀那支函式本來就有退路，這裡補上同樣的機制。
+ * 依序試，遇到「模型有問題」才換下一個；其他錯誤（沒錢、金鑰不對）
+ * 換模型也沒用，直接往上拋。
+ */
+const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini';
+const OPENAI_FALLBACK_MODEL = 'gpt-4o';
+
+const isModelProblem = (status: number) => status === 400 || status === 404;
+
 async function viaOpenAI(text: string, from: string, to: string, key: string) {
   const fromName = LANG_NAMES[from] || from;
   const toName = LANG_NAMES[to] || to;
-  const model = env('TRANSLATE_MODEL') || 'gpt-4o-mini';
 
-  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+  const chain: string[] = [];
+  for (const m of [env('TRANSLATE_MODEL'), OPENAI_DEFAULT_MODEL, OPENAI_FALLBACK_MODEL]) {
+    const name = (m || '').trim();
+    if (name && !chain.includes(name)) chain.push(name);
+  }
+
+  let lastError = '';
+  for (let i = 0; i < chain.length; i++) {
+    const r = await askOpenAI(text, fromName, toName, chain[i], key);
+    const data: any = await r.json().catch(() => ({}));
+    if (r.ok) {
+      const out = (data?.choices?.[0]?.message?.content || '').trim();
+      if (out) return out;
+      lastError = '翻譯服務沒有回傳結果';
+      continue;   // 這個模型回了空的，換下一個試試
+    }
+    lastError = data?.error?.message || `翻譯失敗 HTTP ${r.status}`;
+    // 不是模型的問題就別再換模型了，換幾個都一樣的結果
+    if (!isModelProblem(r.status) || i === chain.length - 1) break;
+  }
+  throw new Error(lastError || '翻譯失敗');
+}
+
+function askOpenAI(text: string, fromName: string, toName: string, model: string, key: string) {
+  return fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -150,11 +184,6 @@ async function viaOpenAI(text: string, from: string, to: string, key: string) {
       ],
     }),
   });
-  const data: any = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data?.error?.message || `翻譯失敗 HTTP ${r.status}`);
-  const out = (data?.choices?.[0]?.message?.content || '').trim();
-  if (!out) throw new Error('翻譯服務沒有回傳結果');
-  return out;
 }
 
 /** Cloud Translation v2 會把譯文做 HTML 跳脫，這裡還原回來。 */

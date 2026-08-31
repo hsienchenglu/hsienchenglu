@@ -240,30 +240,45 @@ function fbStream(path, onEvent, onError) {
  * 先走 Netlify Function（金鑰放伺服器，不會外流）；
  * 沒有部署函式時，退回用這台裝置設定的金鑰直接呼叫。
  */
+/** 過幾百毫秒就可能好的錯誤，值得重試；其餘重試幾次都一樣。 */
+const isTransientStatus = (s) => s === 408 || s === 429 || (s >= 500 && s !== 501);
+
 async function translate(text, from, to) {
   const trimmed = String(text || '').trim();
   if (!trimmed) return '';
   if (from === to) return trimmed;
 
-  try {
-    const r = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: trimmed, from: LANGS[from].api, to: LANGS[to].api }),
-    });
-    if (r.ok) {
-      const j = await r.json();
-      if (j.text) return j.text;
-      throw new Error(j.error || '翻譯服務沒有回傳結果');
-    }
-    // 404／501 代表沒有部署或沒設環境變數，往下用本機金鑰
-    if (r.status !== 404 && r.status !== 501) {
+  /*
+   * 講電話沒有「等一下再試」的餘地——一句話沒翻出來，那句就沒了。
+   * 網路瞬斷、速率限制、伺服器暫時忙碌都是幾百毫秒後就會好的問題，
+   * 所以這類失敗自己重試一次再放棄。金鑰錯、內容有問題重試也沒用，
+   * 立刻往下走。
+   */
+  let lastErr = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt) await new Promise((res) => setTimeout(res, 600));
+    try {
+      const r = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: trimmed, from: LANGS[from].api, to: LANGS[to].api }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (j.text) return j.text;
+        lastErr = new Error(j.error || '翻譯服務沒有回傳結果');
+        break;
+      }
+      // 404／501 代表沒有部署或沒設環境變數，往下用本機金鑰
+      if (r.status === 404 || r.status === 501) { lastErr = null; break; }
       const j = await r.json().catch(() => ({}));
-      throw new Error(j.error || '翻譯失敗 HTTP ' + r.status);
+      lastErr = new Error(j.error || '翻譯失敗 HTTP ' + r.status);
+      if (!isTransientStatus(r.status)) break;
+    } catch (e) {
+      lastErr = e;   // 連不上，很可能只是瞬斷，值得再試一次
     }
-  } catch (e) {
-    if (!prefs.apiKey) throw e;
   }
+  if (lastErr && !prefs.apiKey) throw lastErr;
 
   if (!prefs.apiKey) throw new Error('尚未設定翻譯金鑰');
   // OpenAI 金鑰一律 sk- 開頭，選錯服務商時直接用金鑰格式修正
@@ -1503,6 +1518,20 @@ function msgBubble(m) {
   li.appendChild(b);
 
   /*
+   * 沒送出去的那一句。以前失敗只跳一個提示就把話丟掉，使用者常常
+   * 沒注意到，對方也就一直沒收到——講電話時這是最糟的失敗方式。
+   * 現在留在畫面上、標成失敗、點一下重送。
+   */
+  if (m.failed) {
+    li.classList.add('failed');
+    b.appendChild(el('div', 'retry', t('send_failed_retry')));
+    b.classList.add('speakable');
+    b.title = t('send_failed_retry');
+    b.onclick = () => Call.retry(m);
+    return li;
+  }
+
+  /*
    * 點一下重聽。自動朗讀有可能因為手機沒裝語音、音量沒開、或引擎當掉而
    * 沒出聲，這裡給一個明確的補救動作——而且是使用者親手點的，
    * 有些瀏覽器只認使用者動作觸發的朗讀。
@@ -1866,6 +1895,35 @@ const Call = {
     if (prefs.autoListen) Speech.start();
   },
 
+  /** 重送失敗的那一句：先把失敗的泡泡拿掉，再走一次正常流程。 */
+  retry(msg) {
+    if (this.ending) return;
+    const i = this.msgs.indexOf(msg);
+    if (i >= 0) this.msgs.splice(i, 1);
+    this.render();
+    this.sendUtterance(msg.src);
+  },
+
+  /** 從 msgs 重畫整份逐字稿，刪掉或改動某一則之後用。 */
+  render() {
+    const ul = $('transcript');
+    ul.innerHTML = '';
+    this.msgs.forEach((m) => ul.appendChild(msgBubble(m)));
+    ul.scrollTop = ul.scrollHeight;
+    $('transcriptEmpty').classList.toggle('hidden', this.msgs.length > 0);
+  },
+
+  /** 沒送出去的話留在畫面上，標成失敗、可以點一下重送。 */
+  markFailed(text, reason) {
+    toast(reason);
+    $('callStatus').textContent = t('status_connected');
+    this.append({
+      id: 'failed_' + Date.now().toString(36),
+      fromMe: true, src: text, dst: '', dstLang: this.target,
+      ts: Date.now(), failed: true,
+    });
+  },
+
   async sendUtterance(text) {
     if (!text || this.ending) return;
     $('callStatus').textContent = t('status_translating');
@@ -1873,8 +1931,7 @@ const Call = {
     try {
       dst = await translate(text, prefs.lang, this.target);
     } catch (e) {
-      toast(e.message);
-      $('callStatus').textContent = t('status_connected');
+      this.markFailed(text, e.message);
       return;
     }
 
@@ -1888,8 +1945,8 @@ const Call = {
         src: text, dst, ts,
       });
     } catch (e) {
-      toast(t('err_send', e.message));
-      $('callStatus').textContent = t('status_connected');
+      // 翻譯成功但送不出去，對方一樣沒收到——這句同樣要留著可以重送
+      this.markFailed(text, t('err_send', e.message));
       return;
     }
 

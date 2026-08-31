@@ -311,6 +311,18 @@ code {
 .bubble.speakable { cursor: pointer; }
 .bubble.speakable:active { filter: brightness(1.15); }
 
+/* 沒送出去的那一句：看起來要明顯不一樣，不能跟送出去的混在一起 */
+li.failed .bubble {
+  background: transparent;
+  border: 1px dashed var(--danger);
+}
+li.failed .bubble .src { color: var(--text); }
+li.failed .bubble .retry {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--danger);
+}
+
 /* 介面語言選單：點左上角的鍵才出現，直接看得到目前是哪一種 */
 .lang-menu {
   position: absolute;
