@@ -592,6 +592,21 @@ const Push = {
     return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   },
 
+  /** 電腦（不是手機）。電腦有自己的坑：視窗關掉就沒有東西在跑。 */
+  isDesktop() {
+    return !/iPad|iPhone|iPod|Android/.test(navigator.userAgent);
+  },
+
+  /** 還開在瀏覽器分頁裡，沒有安裝成獨立的應用程式。 */
+  notInstalled() {
+    try {
+      return !window.matchMedia('(display-mode: standalone)').matches
+        && window.navigator.standalone !== true;
+    } catch (e) {
+      return false;
+    }
+  },
+
   /** iOS 必須先「加入主畫面」才拿得到推播權限。 */
   needsInstallOnIos() {
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -2608,7 +2623,13 @@ function init() {
   if (!Speech.supported()) {
     toast(t('err_no_stt'));
   }
-  if (Push.supported() && Notification.permission === 'granted') {
+  /*
+   * 電腦上放在工作列的「捷徑」只是啟動器，視窗關掉就沒有東西在跑，
+   * 來電當然不會有反應。這比「通知已允許」更值得講，所以優先顯示。
+   */
+  if (Push.isDesktop() && Push.notInstalled()) {
+    Standby.setPushNote('alerts_pc_install');
+  } else if (Push.supported() && Notification.permission === 'granted') {
     Standby.setPushNote('alerts_notify_granted');
   } else if (Push.needsInstallOnIos()) {
     Standby.setPushNote('alerts_ios_install');
