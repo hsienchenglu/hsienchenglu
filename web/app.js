@@ -37,7 +37,7 @@ const DEFAULTS = {
   account: '', peer: '', lang: 'zh', uiLang: '',
   dbUrl: '', dbSecret: '',
   provider: 'google', apiKey: '',
-  ring: 2, autoListen: true, autoSpeak: true, serverTts: true,
+  ring: 2, ringVol: 5, autoListen: true, autoSpeak: true, serverTts: true,
   textSize: 'm',
 };
 
@@ -419,6 +419,21 @@ function unescapeHtml(s) {
 // ───────────────────────────── 鈴聲（Web Audio 合成的電話鈴聲）
 
 const Ringer = {
+  /*
+   * 五段音量。原本寫死 0.22，回報是「太小聲聽不到」——漏接一通就是
+   * 漏掉一筆生意，所以預設拉到最大段。
+   *
+   * 為什麼可以開到 1.2 而不破音：鈴聲是 440 與 480 兩個振盪器疊在
+   * 同一個 gain 上，峰值是設定值的兩倍，直接送出去超過 0.5 就會削頂。
+   * 這裡在輸出前串一顆限幅器（見 dest()），把峰值壓住，所以推得更大聲
+   * 而不會變成刺耳的爆音。單純把數字調大是做不到這件事的。
+   */
+  LEVELS: [0.20, 0.40, 0.70, 0.95, 1.20],
+  /** 試聽時用滑桿的當下數值，不必先儲存 */
+  volOverride: 0,
+  /** 輸出前的限幅器，只建一次 */
+  limiter: null,
+
   ctx: null,
   timers: [],
   nodes: [],
@@ -437,6 +452,33 @@ const Ringer = {
     return ok;
   },
 
+  /**
+   * 輸出端。中間串一顆限幅器，把疊加後的峰值壓在 1.0 以內，
+   * 這樣音量可以推到平常會削頂的程度，聽起來只是變大聲、不會變破音。
+   */
+  dest() {
+    if (!this.ctx) return null;
+    // 極少數瀏覽器沒有這個節點。沒有就直接輸出——聲音小一點總比完全沒鈴聲好
+    if (!this.limiter) {
+      if (typeof this.ctx.createDynamicsCompressor !== 'function') return this.ctx.destination;
+      const c = this.ctx.createDynamicsCompressor();
+      c.threshold.value = -8;
+      c.knee.value = 6;
+      c.ratio.value = 12;      // 接近限幅，超過門檻就幾乎不再增加
+      c.attack.value = 0.003;
+      c.release.value = 0.12;
+      c.connect(this.ctx.destination);
+      this.limiter = c;
+    }
+    return this.limiter;
+  },
+
+  /** 目前該用多大聲。試聽時用滑桿的當下值，其餘用已儲存的設定。 */
+  peak() {
+    const level = this.volOverride || prefs.ringVol || 5;
+    return this.LEVELS[Math.min(Math.max(level, 1), this.LEVELS.length) - 1];
+  },
+
   /** 真的要出聲之前叫醒音訊環境。 */
   wake() {
     clearTimeout(this.idleTimer);
@@ -444,6 +486,7 @@ const Ringer = {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) this.ctx = new AC();
+      this.limiter = null;   // 換了新的音訊環境，舊的限幅器不能再用
     }
     if (this.ctx && this.ctx.state === 'suspended') {
       const r = this.ctx.resume();
@@ -465,8 +508,10 @@ const Ringer = {
   },
 
   /** 響 times 次，每次是 2 秒響鈴 + 4 秒靜音，這是一般電話的節奏。 */
-  start(times) {
-    this.stop();
+  /** vol 有給的話就用它（試聽用），沒給就照設定值。 */
+  start(times, vol) {
+    this.stop();                    // stop() 會清掉 volOverride，所以要在它之後才設
+    this.volOverride = vol || 0;
     if (!this.wake()) return;
     const n = Math.max(1, Math.min(10, times || 2));
     for (let i = 0; i < n; i++) {
@@ -490,7 +535,8 @@ const Ringer = {
     this.stopRingback();
     if (!this.wake()) return;
     const tick = () => {
-      this.oneRing(0.09);   // 比來電鈴聲小聲，這是講電話的人自己貼著耳朵聽的
+      // 固定比來電鈴聲小一截——這是貼著耳朵聽的，但仍跟著音量設定走
+      this.oneRing(this.peak() * 0.4);
       this.ringbackTimer = setTimeout(tick, 6000);
     };
     tick();
@@ -504,13 +550,13 @@ const Ringer = {
   oneRing(vol) {
     const ctx = this.ctx;
     if (!ctx) return;
-    const peak = vol || 0.22;
+    const peak = vol || this.peak();
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + 0.05);
     gain.gain.setValueAtTime(peak, ctx.currentTime + 1.9);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 2);
-    gain.connect(ctx.destination);
+    gain.connect(this.dest() || ctx.destination);
 
     [440, 480].forEach((f) => {
       const osc = ctx.createOscillator();
@@ -525,6 +571,7 @@ const Ringer = {
   },
 
   stop() {
+    this.volOverride = 0;
     this.stopRingback();
     this.timers.forEach(clearTimeout);
     this.timers = [];
@@ -2179,6 +2226,8 @@ function fillSettings() {
   $('setDbSecret').value = prefs.dbSecret;
   $('setApiKey').value = prefs.apiKey;
   $('setRing').value = prefs.ring;
+  $('setRingVol').value = prefs.ringVol;
+  $('ringVolLabel').textContent = t('ring_vol_level', prefs.ringVol);
   $('ringLabel').textContent = t('ring_times', prefs.ring);
   $('setAutoListen').checked = prefs.autoListen;
   $('setAutoSpeak').checked = prefs.autoSpeak;
@@ -2206,6 +2255,7 @@ function readSettings() {
   prefs.lang = document.querySelector('input[name="lang"]:checked').value;
   prefs.provider = document.querySelector('input[name="provider"]:checked').value;
   prefs.ring = parseInt($('setRing').value, 10) || 2;
+  prefs.ringVol = parseInt($('setRingVol').value, 10) || 5;
   prefs.autoListen = $('setAutoListen').checked;
   prefs.autoSpeak = $('setAutoSpeak').checked;
   prefs.serverTts = $('setServerTts').checked;
@@ -2410,7 +2460,14 @@ function wire() {
     btn.disabled = false;
   };
   $('setRing').oninput = (e) => { $('ringLabel').textContent = t('ring_times', e.target.value); };
-  $('btnTestRing').onclick = () => Ringer.start(parseInt($('setRing').value, 10) || 2);
+  $('setRingVol').oninput = (e) => {
+    $('ringVolLabel').textContent = t('ring_vol_level', e.target.value);
+  };
+  // 用滑桿的當下數值試聽，不必先按儲存才聽得出差別
+  $('btnTestRing').onclick = () => Ringer.start(
+    parseInt($('setRing').value, 10) || 2,
+    parseInt($('setRingVol').value, 10) || 5
+  );
 
   $('btnStandby').onclick = async () => {
     if (!isConfigured()) { toast(t('err_setup_first')); return; }

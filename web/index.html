@@ -8,7 +8,7 @@
      留空的話行為照舊，由每個人自己在設定頁填。 -->
 <meta name="default-db-url"
       content="https://zhid-talk-default-rtdb.asia-southeast1.firebasedatabase.app">
-<meta name="app-version" content="20260831-1745">
+<meta name="app-version" content="20260901-1415">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -211,6 +211,12 @@
       <button id="btnTestRing" class="btn text" data-i18n="ring_test">試聽</button>
     </div>
     <input id="setRing" class="slider" type="range" min="1" max="5" step="1" value="2">
+    <!-- 音量另外一條：吵的地方要大聲，晚上在家要小聲 -->
+    <div class="row between mt">
+      <span class="hint" data-i18n="ring_vol"></span>
+      <span id="ringVolLabel" class="accent"></span>
+    </div>
+    <input id="setRingVol" class="slider" type="range" min="1" max="5" step="1" value="5">
     <label class="check"><input id="setAutoListen" type="checkbox"> <span data-i18n="auto_listen">通話中自動聆聽</span></label>
     <label class="check"><input id="setAutoSpeak" type="checkbox"> <span data-i18n="auto_speak">自動朗讀對方的話</span></label>
     <!-- 用伺服器產生的聲音，手機沒裝語音資料也唸得出來 -->
