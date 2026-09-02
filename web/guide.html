@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F6F8F7">
+<!-- 中印對照的操作說明。可以直接把網址傳給客戶：/guide.html -->
+<title>譯通操作對照</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+<style>
+  /* 淺色是預設。深色只改 token，元件一律透過 token 取色 */
+  :root {
+    --paper:        #F6F8F7;
+    --card:         #FFFFFF;
+    --ink:          #16201C;
+    --ink-soft:     #55635C;
+    --ink-faint:    #8A968F;
+    --rule:         #DDE4E0;
+    --accent:       #14855A;
+    --accent-soft:  #E6F3ED;
+    --chip-bg:      #16A06B;
+    --chip-ink:     #FFFFFF;
+    --warn:         #B3541E;
+    --warn-soft:    #FBEFE7;
+    --shadow:       0 1px 2px rgba(22, 32, 28, .06), 0 8px 24px rgba(22, 32, 28, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:       #0E1116;
+      --card:        #161B22;
+      --ink:         #E6EDF3;
+      --ink-soft:    #A8B4BD;
+      --ink-faint:   #77848D;
+      --rule:        #2A3240;
+      --accent:      #2FD08A;
+      --accent-soft: #14261E;
+      --chip-bg:     #2FD08A;
+      --chip-ink:    #06281B;
+      --warn:        #F0A46A;
+      --warn-soft:   #2A1F16;
+      --shadow:      0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:       #0E1116;
+    --card:        #161B22;
+    --ink:         #E6EDF3;
+    --ink-soft:    #A8B4BD;
+    --ink-faint:   #77848D;
+    --rule:        #2A3240;
+    --accent:      #2FD08A;
+    --accent-soft: #14261E;
+    --chip-bg:     #2FD08A;
+    --chip-ink:    #06281B;
+    --warn:        #F0A46A;
+    --warn-soft:   #2A1F16;
+    --shadow:      0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC",
+      "Microsoft JhengHei", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 940px; margin: 0 auto; padding: 40px 20px 72px; }
+
+  /* ── 抬頭 ───────────────────────────── */
+  .masthead { padding-bottom: 22px; border-bottom: 2px solid var(--ink); }
+  .kicker {
+    font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin: 0 0 10px;
+  }
+  h1 {
+    font-family: "Noto Serif TC", Georgia, serif;
+    font-weight: 700; font-size: clamp(30px, 5.5vw, 44px);
+    line-height: 1.2; margin: 0; text-wrap: balance;
+  }
+  h1 .id { display: block; color: var(--ink-soft); font-size: .58em; margin-top: 6px; }
+  .standfirst {
+    margin: 18px 0 0; max-width: 62ch;
+    color: var(--ink-soft); font-size: 17px;
+  }
+  .standfirst .id { display: block; margin-top: 6px; }
+
+  /* ── 章節 ───────────────────────────── */
+  section { margin-top: 44px; }
+  h2 {
+    font-family: "Noto Serif TC", Georgia, serif;
+    font-size: 23px; font-weight: 600; margin: 0 0 4px; text-wrap: balance;
+  }
+  h2 .id { color: var(--ink-soft); font-weight: 400; }
+  h2 .id::before { content: " · "; color: var(--ink-faint); }
+  .lede { margin: 0 0 20px; color: var(--ink-soft); font-size: 15px; }
+
+  /* ── 雙語對照的核心：左右鎖同一列 ────────── */
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 34px;
+    position: relative;
+  }
+  /* 中間那道細線就是「同一行」的視覺依據 */
+  .pair::before {
+    content: ""; position: absolute; inset: 0 auto 0 50%;
+    border-left: 1px solid var(--rule);
+  }
+  .pair > * { min-width: 0; }
+  .col-head {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 700; padding-bottom: 10px;
+  }
+
+  .steps { display: contents; }
+  .step-zh, .step-id {
+    padding: 16px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .step-zh { padding-right: 4px; }
+  .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: var(--card);
+    font-size: 13px; font-weight: 700; margin-right: 9px;
+    vertical-align: 2px;
+  }
+  .step-zh b, .step-id b { font-weight: 700; }
+  .step-zh p, .step-id p { margin: 6px 0 0; color: var(--ink-soft); font-size: 15px; }
+  /* 印尼欄不重複編號，靠同一列對齊就看得出來是同一步 */
+  .step-id { padding-left: 33px; }
+
+  /* ── 畫面上真正的按鈕字樣 ───────────────── */
+  .btn {
+    display: inline-block; padding: 1px 10px; border-radius: 999px;
+    background: var(--chip-bg); color: var(--chip-ink);
+    font-size: 13px; font-weight: 700; white-space: nowrap;
+    line-height: 1.6;
+  }
+  .field {
+    display: inline-block; padding: 1px 8px; border-radius: 6px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--rule);
+    font-size: 13px; font-weight: 500; white-space: nowrap;
+  }
+
+  /* ── 通話中的操作：查閱用，所以不編號 ────── */
+  .ops { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .op {
+    display: grid; grid-template-columns: 54px 1fr 1fr;
+    gap: 0 34px; align-items: start;
+    padding: 15px 0; border-top: 1px solid var(--rule);
+  }
+  .op .icon {
+    font-size: 26px; line-height: 1.2; text-align: center;
+    filter: saturate(.9);
+  }
+  .op .zh b, .op .id b { display: block; margin-bottom: 2px; }
+  .op .zh, .op .id { font-size: 15px; color: var(--ink-soft); min-width: 0; }
+  .op .zh b, .op .id b { color: var(--ink); font-size: 16px; }
+
+  /* ── 排除疑難：狀況 → 原因 → 怎麼辦 ────── */
+  .fixes { margin-top: 4px; }
+  .fix {
+    padding: 16px 18px; margin-top: 10px;
+    background: var(--card); border: 1px solid var(--rule);
+    border-left: 3px solid var(--warn);
+    border-radius: 0 10px 10px 0;
+    box-shadow: var(--shadow);
+  }
+  .fix .q { font-weight: 700; }
+  .fix .q .id { color: var(--ink-soft); font-weight: 400; }
+  .fix .q .id::before { content: " / "; color: var(--ink-faint); }
+  .fix .a { margin: 8px 0 0; font-size: 15px; color: var(--ink-soft); }
+  .fix .a .id { display: block; margin-top: 4px; }
+
+  /* ── 講話的訣竅 ─────────────────────── */
+  .tips { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 4px; }
+  .tip {
+    padding: 16px 18px; background: var(--card);
+    border: 1px solid var(--rule); border-radius: 12px;
+  }
+  .tip b { display: block; font-size: 15px; }
+  .tip span { display: block; font-size: 14px; color: var(--ink-soft); margin-top: 3px; }
+
+  /* 對話示範：直接畫成 App 裡的樣子，比文字描述好懂 */
+  .demo {
+    margin-top: 22px; padding: 18px; border-radius: 14px;
+    background: var(--card); border: 1px solid var(--rule); box-shadow: var(--shadow);
+  }
+  .demo .cap { font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 700; margin-bottom: 12px; }
+  .bubbles { display: flex; flex-direction: column; gap: 10px; }
+  .bub { max-width: 82%; padding: 10px 14px; border-radius: 16px; font-size: 15px; }
+  .bub .src { font-size: 13px; color: var(--ink-faint); }
+  .bub .dst { font-size: 16px; margin-top: 2px; }
+  .bub.them { align-self: flex-start; background: var(--accent-soft); border-bottom-left-radius: 4px; }
+  .bub.me { align-self: flex-end; background: var(--chip-bg); border-bottom-right-radius: 4px; }
+  .bub.me .src { color: color-mix(in srgb, var(--chip-ink) 80%, transparent); }
+  .bub.me .dst { color: var(--chip-ink); }
+
+  footer {
+    margin-top: 52px; padding-top: 20px; border-top: 1px solid var(--rule);
+    font-size: 13.5px; color: var(--ink-faint);
+  }
+  footer .id { display: block; margin-top: 4px; }
+  footer b { color: var(--ink-soft); }
+
+  /* 窄螢幕：改成上下堆疊，中文在上、印尼文緊接著，仍是同一組 */
+  @media (max-width: 720px) {
+    .pair { grid-template-columns: 1fr; gap: 0; }
+    .pair::before { display: none; }
+    .col-head { display: none; }
+    .step-zh { border-top: 1px solid var(--rule); padding: 16px 0 4px; }
+    .step-id {
+      border-top: none; padding: 0 0 16px 33px;
+      color: var(--ink-soft);
+    }
+    .op { grid-template-columns: 44px 1fr; gap: 0 14px; }
+    .op .id { grid-column: 2; margin-top: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">譯通 · ZhID Talk</p>
+    <h1>
+      中文印尼文 即時通話
+      <span class="id">Panggilan terjemahan langsung</span>
+    </h1>
+    <p class="standfirst">
+      你說中文，對方說印尼文。App 會即時翻譯並唸出來，雙方都看得到文字紀錄。免費、不用註冊。
+      <span class="id">Anda bicara bahasa Indonesia, lawan bicara berbahasa Mandarin.
+      Aplikasi menerjemahkan dan membacakannya. Gratis, tanpa daftar.</span>
+    </p>
+  </header>
+
+  <section>
+    <h2>第一次設定<span class="id">Pengaturan awal</span></h2>
+    <p class="lede">五個步驟，大約三分鐘。只有兩格要填。
+      <span class="id">Lima langkah, sekitar tiga menit. Hanya dua kotak yang perlu diisi.</span></p>
+
+    <div class="pair">
+      <div class="col-head">中文</div>
+      <div class="col-head">Bahasa Indonesia</div>
+
+      <div class="step-zh"><span class="num">1</span><b>用手機瀏覽器開網址</b>
+        <p>iPhone 用 Safari，Android 用 Chrome。</p></div>
+      <div class="step-id"><b>Buka tautan di peramban ponsel</b>
+        <p>iPhone pakai Safari, Android pakai Chrome.</p></div>
+
+      <div class="step-zh"><span class="num">2</span><b>把介面換成看得懂的語言</b>
+        <p>最上面那張卡片選 <span class="field">Bahasa Indonesia</span>，整個畫面立刻變，不用先儲存。</p></div>
+      <div class="step-id"><b>Ganti bahasa tampilan</b>
+        <p>Di kartu paling atas pilih <span class="field">Bahasa Indonesia</span>. Tampilan langsung berubah, tidak perlu menyimpan dulu.</p></div>
+
+      <div class="step-zh"><span class="num">3</span><b>只填兩格</b>
+        <p><span class="field">Akun saya</span>：你的代號（對方會撥這個）。<br>
+        <span class="field">Bahasa yang saya pakai</span>：選你講的語言。<br>
+        其他卡片一律不要動。</p></div>
+      <div class="step-id"><b>Isi dua kotak saja</b>
+        <p><span class="field">Akun saya</span>: kode Anda (itu yang akan ditelepon).<br>
+        <span class="field">Bahasa yang saya pakai</span>: pilih bahasa Anda.<br>
+        Kartu lain biarkan apa adanya.</p></div>
+
+      <div class="step-zh"><span class="num">4</span><b>按最下面的綠色按鈕</b>
+        <p><span class="btn">Simpan</span> 儲存後會回到主畫面。</p></div>
+      <div class="step-id"><b>Tekan tombol hijau paling bawah</b>
+        <p><span class="btn">Simpan</span> lalu kembali ke layar utama.</p></div>
+
+      <div class="step-zh"><span class="num">5</span><b>按一次「啟用鈴聲」</b>
+        <p><span class="btn">Aktifkan dering</span> 這一下才會有來電鈴聲。每支手機按一次就好。</p></div>
+      <div class="step-id"><b>Tekan “Aktifkan dering” satu kali</b>
+        <p><span class="btn">Aktifkan dering</span> tanpa ini tidak ada suara dering. Cukup sekali per ponsel.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>撥號與接聽<span class="id">Menelepon dan menjawab</span></h2>
+    <div class="pair">
+      <div class="col-head">中文</div>
+      <div class="col-head">Bahasa Indonesia</div>
+
+      <div class="step-zh"><b>要打給對方</b>
+        <p>在 <span class="field">Akun lawan bicara</span> 輸入對方的代號，按 <span class="btn">Panggil</span>。
+        會聽到「嘟…嘟…」表示正在響。</p></div>
+      <div class="step-id"><b>Menelepon</b>
+        <p>Isi <span class="field">Akun lawan bicara</span> dengan kode lawan, tekan <span class="btn">Panggil</span>.
+        Bunyi “tut… tut…” artinya sedang berdering.</p></div>
+
+      <div class="step-zh"><b>有人打來</b>
+        <p>手機會響，按 <span class="btn">Jawab</span> 接聽、<span class="btn">Tolak</span> 拒接。
+        畫面顯示 <span class="field">Tersambung</span> 就可以講話了。</p></div>
+      <div class="step-id"><b>Ada panggilan masuk</b>
+        <p>Ponsel berdering. Tekan <span class="btn">Jawab</span> untuk menjawab, <span class="btn">Tolak</span> untuk menolak.
+        Kalau muncul <span class="field">Tersambung</span>, sudah bisa bicara.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>通話中的四個按鈕<span class="id">Empat tombol saat bicara</span></h2>
+    <p class="lede">這一節是用到再查，不必背。
+      <span class="id">Bagian ini untuk dilihat saat perlu, tidak perlu dihafal.</span></p>
+
+    <div class="ops">
+      <div class="op">
+        <div class="icon">🎙</div>
+        <div class="zh"><b>麥克風</b>點一下開始說話。說完再點一下，或停下來幾秒它會自己送出。</div>
+        <div class="id"><b>Mikrofon</b> Ketuk untuk mulai bicara. Ketuk lagi setelah selesai, atau diam beberapa detik dan kalimatnya terkirim sendiri.</div>
+      </div>
+      <div class="op">
+        <div class="icon">🔊</div>
+        <div class="zh"><b>朗讀</b>開著的話，對方的話會自動唸出來。變成 🔈 就是關掉了。</div>
+        <div class="id"><b>Bacakan</b> Kalau menyala, ucapan lawan dibacakan otomatis. Kalau jadi 🔈 berarti mati.</div>
+      </div>
+      <div class="op">
+        <div class="icon">💬</div>
+        <div class="zh"><b>點訊息重聽</b>沒聽清楚就點那則訊息的氣泡，會再唸一次。</div>
+        <div class="id"><b>Ketuk untuk dengar lagi</b> Kalau kurang jelas, ketuk gelembung pesannya.</div>
+      </div>
+      <div class="op">
+        <div class="icon">📵</div>
+        <div class="zh"><b>掛斷</b>紅色那顆。掛斷後逐字稿會留在通話紀錄裡。</div>
+        <div class="id"><b>Akhiri</b> Tombol merah. Transkrip tersimpan di riwayat panggilan.</div>
+      </div>
+    </div>
+
+    <div class="demo">
+      <div class="cap">畫面看起來像這樣 · Tampilannya seperti ini</div>
+      <div class="bubbles">
+        <div class="bub them">
+          <div class="src">Satu kotak tiga ratus lima puluh ribu rupiah</div>
+          <div class="dst">一箱三十五萬印尼盾</div>
+        </div>
+        <div class="bub me">
+          <div class="src">可以算便宜一點嗎？</div>
+          <div class="dst">Bisa lebih murah sedikit?</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>講得順的訣竅<span class="id">Agar lancar</span></h2>
+    <div class="tips">
+      <div class="tip"><b>一次講一句</b><span>講完停一下再講下一句，翻譯才不會混在一起。</span>
+        <span>Bicara satu kalimat, lalu berhenti sebentar.</span></div>
+      <div class="tip"><b>數字講慢一點</b><span>價錢和數量最容易聽錯，講完看一下螢幕確認。</span>
+        <span>Harga dan jumlah paling mudah salah — periksa di layar.</span></div>
+      <div class="tip"><b>找安靜的地方</b><span>背景吵雜會讓辨識變差。</span>
+        <span>Tempat bising membuat pengenalan suara meleset.</span></div>
+      <div class="tip"><b>重要的事看文字</b><span>螢幕上的文字才是正式的，聲音可能沒聽清楚。</span>
+        <span>Yang tertulis di layar adalah patokan, bukan yang terdengar.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>遇到問題<span class="id">Kalau ada masalah</span></h2>
+    <div class="fixes">
+
+      <div class="fix">
+        <div class="q">有人打來但手機沒響<span class="id">Ada panggilan tapi tidak berdering</span></div>
+        <p class="a">回主畫面按一次 <span class="btn">Aktifkan dering</span>。iPhone 要先用分享選單「加入主畫面」，從那個圖示開才收得到。
+          <span class="id">Tekan <span class="btn">Aktifkan dering</span> sekali di layar utama. Di iPhone, tambahkan dulu ke Layar Utama lewat menu Bagikan, lalu buka dari ikon itu.</span></p>
+      </div>
+
+      <div class="fix">
+        <div class="q">聽不到對方的聲音<span class="id">Tidak terdengar suara lawan bicara</span></div>
+        <p class="a">先調 <b>媒體音量</b>（不是鈴聲音量，兩個是分開的）。iPhone 還要檢查側邊的靜音開關。也可以到設定按 <span class="btn">Coba suara</span> 測試。
+          <span class="id">Naikkan <b>volume media</b> (bukan volume dering — keduanya terpisah). Di iPhone periksa juga sakelar senyap di samping. Bisa juga tes lewat <span class="btn">Coba suara</span> di pengaturan.</span></p>
+      </div>
+
+      <div class="fix">
+        <div class="q">講了話但沒有送出去<span class="id">Sudah bicara tapi tidak terkirim</span></div>
+        <p class="a">那句話會留在畫面上，框成紅色虛線，<b>點一下就重送</b>。麥克風圖示是 🔇 的話代表沒開，點一下打開。
+          <span class="id">Kalimat itu tetap ada di layar dengan garis merah putus-putus — <b>ketuk untuk kirim ulang</b>. Kalau ikon mikrofon 🔇 berarti mati, ketuk untuk menyalakan.</span></p>
+      </div>
+
+      <div class="fix">
+        <div class="q">字太小看不清楚<span class="id">Huruf terlalu kecil</span></div>
+        <p class="a">設定頁的 <span class="field">Ukuran huruf</span> 可以調大，選了立刻生效。鈴聲太小聲就調 <span class="field">Volume dering</span>。
+          <span class="id">Atur <span class="field">Ukuran huruf</span> di pengaturan, langsung berlaku. Dering terlalu pelan? Atur <span class="field">Volume dering</span>.</span></p>
+      </div>
+
+      <div class="fix">
+        <div class="q">畫面寫「重新連線中」<span class="id">Layar menulis “menyambung ulang”</span></div>
+        <p class="a">網路不穩。<b>不用重打</b>——連回來之後，斷線那段時間對方講的話會自動補上，不會漏掉。
+          <span class="id">Jaringan tidak stabil. <b>Tidak perlu telepon ulang</b> — setelah tersambung lagi, ucapan yang tertunda otomatis muncul.</span></p>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <b>關於隱私</b>：通話內容在掛斷幾秒後就會從伺服器刪除，逐字稿只留在你自己的手機裡。
+    <span class="id"><b>Privasi</b>: isi percakapan dihapus dari server beberapa detik setelah panggilan berakhir. Transkrip hanya tersimpan di ponsel Anda sendiri.</span>
+  </footer>
+
+</div>
+</body>
+</html>
