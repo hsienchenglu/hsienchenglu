@@ -14,6 +14,12 @@
 
 const I18N = {
   zh: {
+    gate_title: '請輸入本月密碼',
+    gate_desc: '密碼每個月換一組，跟賣家索取。',
+    gate_hint: '例如 A6B648',
+    gate_enter: '進入',
+    gate_wrong: '密碼不對，請再確認一次',
+    gate_month: '目前是 {0} 月（依這支手機的日期）',
     app_name: '譯通',
     lang_zh: '中文',
     lang_id: '印尼文',
@@ -168,6 +174,12 @@ const I18N = {
   },
 
   id: {
+    gate_title: 'Masukkan kata sandi bulan ini',
+    gate_desc: 'Kata sandi berganti setiap bulan. Minta ke penjual.',
+    gate_hint: 'Contoh: A6B648',
+    gate_enter: 'Masuk',
+    gate_wrong: 'Kata sandi salah, coba periksa lagi',
+    gate_month: 'Sekarang bulan {0} (menurut tanggal di ponsel ini)',
     app_name: 'ZhID Talk',
     lang_zh: 'Bahasa Mandarin',
     lang_id: 'Bahasa Indonesia',
@@ -324,6 +336,12 @@ const I18N = {
     alerts_on: 'Nada dering dan notifikasi latar sudah aktif',
   },
   en: {
+    gate_title: "Enter this month's password",
+    gate_desc: 'The password changes every month. Ask the seller for it.',
+    gate_hint: 'e.g. A6B648',
+    gate_enter: 'Enter',
+    gate_wrong: 'Wrong password — please check again',
+    gate_month: "It is month {0} (according to this device's date)",
     app_name: 'ZhID Talk',
     lang_zh: 'Chinese',
     lang_id: 'Indonesian',

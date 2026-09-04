@@ -373,3 +373,24 @@ li.failed .bubble .retry {
 .lang-menu button.on { color: var(--accent); font-weight: 700; }
 .lang-menu button::before { content: '\2007\2007'; }
 .lang-menu button.on::before { content: '\2713\2007'; }
+
+/* ── 登入頁 ─────────────────────────────
+   只有一張卡片，置中。不要讓它看起來像出錯畫面，
+   客戶第一次打開看到的就是這一頁。 */
+.gate-screen.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.gate-box { width: 100%; max-width: 380px; }
+.gate-brand { margin-bottom: 22px; }
+.gate-input {
+  text-align: center;
+  font-size: 1.5rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+#gateError:empty, #gateMonth:empty { display: none; }

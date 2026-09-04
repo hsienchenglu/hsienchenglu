@@ -2562,6 +2562,11 @@ function wire() {
       navigator.sendBeacon?.(fbUrl(`calls/${Call.callId}/state`), JSON.stringify('ended'));
     }
   };
+  $('btnGate').onclick = () => submitGate();
+  $('gatePass').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitGate();
+  });
+
   window.addEventListener('beforeunload', markEnded);
   window.addEventListener('pagehide', markEnded);
 
@@ -2585,6 +2590,71 @@ function wire() {
   });
 }
 
+
+// ───────────────────────────── 登入
+
+/**
+ * 每月一組密碼的登入門檻。
+ *
+ * **這是門檻，不是加密。** 驗證在瀏覽器裡做，網頁原始碼誰都看得到，
+ * 六位英數的密碼用程式跑幾秒就能反推。它擋得住的是「拿到網址就亂用」
+ * 的人——不讓陌生人耗掉翻譯額度、塞爆資料庫。真正的存取控制要靠
+ * 伺服器端驗證，那是另一個規模的改動。
+ *
+ * 存的是 SHA-256 而不是明碼，至少「檢視原始碼」不會一眼看到十二組密碼。
+ */
+const Gate = {
+  KEY: 'zhid.pass',
+
+  /** 一月到十二月，順序不能動 */
+  HASHES: [
+    'd7e490614627f180bd1db6652670642107364bd1b9ab8b4ed805bd1aabd57c2e',
+    'c8f6259e86d35ad9333168da8548db0fc62c9957f831d2a5abad5200d0b90a31',
+    'aa6a38de71244119d616d478109312bac55c4e9d8cde195fb38a1b90a68c0116',
+    '5f05f1a68e7a5220ded0a067a3939d4aabdb44c9500d848506c7921f43fb28f2',
+    '4843d7b2749c8d47c6e5896b5bd936ad4a6251b4bca49349f90bf9118bc61ab9',
+    'ed1505ffdac44688cd85dd417e2f7bf8d11c2e9b6d2dc3b93032ff27ffd57d67',
+    '3c268d2d160eebe2f8fbd76eb827249088302ad4f45cc7683dfafed15b3e3b29',
+    'c45b62a95f6298b8a55e0d4e2c80bade9e89f4c7153645a3206f1b0ce913cb36',
+    'afd77c296312352a7aed7583a32b8044063694b3e5723b4aac77b1f747c6fc2e',
+    '083ebbe6cc50d2ef3c7a243e0312be4b44f5eadb19dd99eda718cd168873aaec',
+    'c8af825993c2bddc9b3b74949e0bbfcd620fe5c863dbcba941b3a240e0c5eef0',
+    '1382ec234fa174f0c0a9a2739cb9b18dfea1e2cf4cf1d2a723c34d82b5ba281c'
+  ],
+
+  /** 目前這台裝置認為的年月。密碼跟著月份走，所以要一起記 */
+  stamp() {
+    const d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1);
+  },
+
+  async sha256(text) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  },
+
+  /** 大小寫和前後空白都不計較——使用者是用手打的，不該為了這個被擋 */
+  async check(input) {
+    const norm = String(input || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!norm) return false;
+    if (!(window.crypto && crypto.subtle)) return false;   // 需要 HTTPS
+    try {
+      return (await this.sha256(norm)) === this.HASHES[new Date().getMonth()];
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /** 通過之後記住，換月才要再輸入一次 */
+  remember() { Store.set(this.KEY, this.stamp()); },
+
+  passed() {
+    try { return localStorage.getItem(this.KEY) === this.stamp(); } catch (e) { return false; }
+  },
+};
+
 // ───────────────────────────── 啟動
 
 function init() {
@@ -2593,6 +2663,43 @@ function init() {
   // 沒特別指定的話，介面語言跟著「我說的語言」走——
   // 印尼看護把語言設成印尼文，介面就自然是印尼文
   applyUiLang(prefs.uiLang || prefs.lang);
+
+  /*
+   * 還沒通過本月密碼就停在登入頁。連線、推播註冊這些都不要先做——
+   * 沒登入的人不該佔用任何資源，也不該把自己掛上待機。
+   */
+  if (!Gate.passed()) {
+    showGate();
+    return;
+  }
+  start();
+}
+
+/** 登入頁：本月是幾月直接寫出來，密碼對不上時才知道是不是手機日期跑掉 */
+function showGate() {
+  $('gateMonth').textContent = t('gate_month', new Date().getMonth() + 1);
+  $('gateError').textContent = '';
+  $('gatePass').value = '';
+  showScreen('screenGate');
+  setTimeout(() => { try { $('gatePass').focus(); } catch (e) {} }, 100);
+}
+
+async function submitGate() {
+  const btn = $('btnGate');
+  btn.disabled = true;
+  const ok = await Gate.check($('gatePass').value);
+  btn.disabled = false;
+  if (!ok) {
+    $('gateError').textContent = t('gate_wrong');
+    $('gatePass').select();
+    return;
+  }
+  Gate.remember();
+  start();
+}
+
+/** 通過門檻之後才真正啟動 App。 */
+function start() {
   Speech.loadVoices();
   Wave.init();
   Push.register();
@@ -2611,6 +2718,7 @@ function init() {
     toast(t('err_finish_setup'));
     return;
   }
+  showScreen('screenMain');
 
   // 設定完成就自動連線，這樣網頁一打開就等得到來電；
   // 鈴聲與背景通知仍需要使用者按一下按鈕才能授權。

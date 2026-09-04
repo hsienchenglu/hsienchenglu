@@ -8,7 +8,7 @@
      留空的話行為照舊，由每個人自己在設定頁填。 -->
 <meta name="default-db-url"
       content="https://zhid-talk-default-rtdb.asia-southeast1.firebasedatabase.app">
-<meta name="app-version" content="20260902-1039">
+<meta name="app-version" content="20260904-0853">
 <title>譯通 — 中印即時翻譯通話</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -20,8 +20,31 @@
 </head>
 <body>
 
+<!-- ───────────────── 登入 ─────────────────
+     密碼每月換一組，驗證在瀏覽器裡做。這是「門檻」不是加密：
+     目的是擋掉拿到網址就亂用的人，不讓陌生人耗掉翻譯額度。 -->
+<section id="screenGate" class="screen gate-screen active">
+  <div class="gate-box">
+    <div class="brand gate-brand">
+      <h1 data-i18n="app_name">譯通</h1>
+      <img class="brand-logo" src="logo.png" alt="AICOM" onerror="this.remove()">
+    </div>
+    <div class="card">
+      <div class="card-title" data-i18n="gate_title">請輸入本月密碼</div>
+      <div class="hint" data-i18n="gate_desc"></div>
+      <!-- inputmode 讓手機直接跳英數鍵盤，密碼是 6 位英數 -->
+      <input id="gatePass" class="input gate-input" type="text"
+             inputmode="text" autocapitalize="characters" autocomplete="off"
+             spellcheck="false" maxlength="12" data-i18n-ph="gate_hint">
+      <button id="btnGate" class="btn primary block" data-i18n="gate_enter">進入</button>
+      <div id="gateError" class="hint warn center"></div>
+      <div id="gateMonth" class="hint center"></div>
+    </div>
+  </div>
+</section>
+
 <!-- ───────────────── 主畫面 ───────────────── -->
-<section id="screenMain" class="screen active">
+<section id="screenMain" class="screen">
   <header class="topbar topbar-main">
     <!-- 介面語言切換：顯示的是「切過去會變成的語言」 -->
     <button id="btnUiLang" class="lang-btn" data-i18n-title="settings_ui_lang">中</button>
